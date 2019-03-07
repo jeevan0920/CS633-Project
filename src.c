@@ -8,7 +8,8 @@
 #define V 17
 #define ne 24
 #define ts 3
-int find_leaders( int *leaders, int *Bcast_leaders, int node_vert , int Base); 
+int find_leaders( int *leaders, int *Bcast_leaders, int node_vert , int Base);
+void find_contract_edges( int size, int *Data, int node_size, int *Alltocounts, int *Total_Leaders );
 int main( int argc, char *argv[])
 {
 	int D[ne][ts] = {
@@ -115,6 +116,7 @@ int main( int argc, char *argv[])
 	 * Leaders : This will contain leaders list till now
 	 * Bcast_leaders : This will be broadcasted to all other nodes.
 	 * Num_of_leaders : Num_of_leaders is selected num of leaders;
+	 * Total_Leadres : This list contain all the leaders present round;
 	 */
 	int *Nodes, Base = myrank * node_vert, *Leaders, *Bcast_leaders;
         if ( myrank == size-1 ){
@@ -166,6 +168,25 @@ int main( int argc, char *argv[])
 		MPI_Allgatherv( Bcast_leaders, node_vert, MPI_INT, Total_Leaders, recvcnts, displs, MPI_INT, MPI_COMM_WORLD);
 
 	}
+	
+	int *Alltocounts, *AlltoData;
+	Alltocounts = (int *) malloc( sizeof(int) * size );
+	for( i=0; i<size; i++)
+	{
+		Alltocounts[i] = 0;
+	}
+	if( myrank == size-1)
+	{
+		find_contract_edges(size, Data, last_node_size, Alltocounts, Total_Leaders);
+		for( i=0; i<size; i++)
+			printf("%d ",Alltocounts[i]);
+	}
+	else
+	{
+	//	find_contract_edges(size, Data, node_size, Alltocounts, Total_Leaders);
+	}
+
+
 	/*
 	 * MPI_Allreduce will count all the sums
 	 */	
@@ -179,7 +200,8 @@ int main( int argc, char *argv[])
  * I am taking every node and genearating random probability if that probablity is
  * greater than our desired probablity then it will consider that node has LEADER
  */
-int find_leaders( int *Leaders, int *Bcast_leaders, int node_vert, int Base){
+int find_leaders( int *Leaders, int *Bcast_leaders, int node_vert, int Base)
+{
 	int i, count = 0, rand_value;
 	srand( getpid() );
 	for( i = 0; i< node_vert; i++){
@@ -190,7 +212,47 @@ int find_leaders( int *Leaders, int *Bcast_leaders, int node_vert, int Base){
 			count += 1;
 		}
 		else
-			Bcast_leaders[i] = -1;
+			Bcast_leaders[i] = 0;
 	}
 	return count;
+}
+void find_contract_edges(int size, int *Data, int node_size, int *Alltocounts , int *Total_Leaders)
+{
+	int i, node;
+	for( i=0 ; i<node_size * ts; i += ts)
+	{
+		printf(" %d %d %d ", Data[i], Data[i+1], Data[i+2]);
+		if(!Data[i+2])
+		{
+			printf(" %d %d %d ", Data[i], Data[i+1], Data[i+2]);
+			if( Total_Leaders[ Data[i] ] && Total_Leaders[ Data[i+1] ] )
+			{
+				// if both vertices are leaders nothing to do
+				printf(" Both Leaders \n");
+			}
+			else if ( !Total_Leaders[ Data[i] ] && !Total_Leaders[ Data[i+1] ] )
+			{
+				// if both are not leaders nothing to do
+				printf("Both are non Leaders \n");
+			}
+			else
+			{
+				if( Total_Leaders[ Data[i] ] )
+				{
+					node = Data[i + 1] / size;
+					if (node > size-1 )
+						node = size - 1; 
+					Alltocounts[node] += 1;
+				}
+				else
+				{
+					node = Data[i] / size;
+					if (node > size-1)
+						node = size - 1;
+                                        Alltocounts[node] += 1;
+				}
+				printf(" %d %d \n ", node, Alltocounts[node] );
+			}
+		}
+	}
 }
