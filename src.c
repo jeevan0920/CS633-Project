@@ -43,6 +43,13 @@ int main( int argc, char *argv[])
 	MPI_Comm_size(MPI_COMM_WORLD, &size);
 	
 	int last_node_size = ne/size + ne % size, node_size = ne/size;
+	/*
+	 * Data is a int pointer that will hold all the edges list for
+	 * the particular node.
+	 * MPI_Scatterv will done at 0th node process that means.. 0th
+	 * node will read all the data from the file and scatterv to all
+	 * th nodes.
+	 */
 	int *Data;
 	if ( myrank == size-1 ){
 		Data = (int *) malloc( sizeof(int) * last_node_size *ts );
