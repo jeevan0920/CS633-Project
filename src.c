@@ -5,8 +5,10 @@
 #include <unistd.h>
 
 #define Prob 0.5
+#define V 17
 #define ne 24
 #define ts 3
+int find_leaders( int *leaders, int *Bcast_leaders, int node_vert , int Base); 
 int main( int argc, char *argv[])
 {
 	int D[ne][ts] = {
@@ -42,8 +44,9 @@ int main( int argc, char *argv[])
 	MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
 	MPI_Comm_size(MPI_COMM_WORLD, &size);
 	
-	int last_node_size = ne/size + ne % size, node_size = ne/size;
+	int last_node_size = ne/size + ne % size, node_size = ne/size, last_node_vert = V/size + V % size, node_vert = V/size;
 	/*
+	 * last_node_size Number of edges at (n-1) th node
 	 * Data is a int pointer that will hold all the edges list for
 	 * the particular node.
 	 * MPI_Scatterv will done at 0th node process that means.. 0th
@@ -53,6 +56,7 @@ int main( int argc, char *argv[])
 	int *Data;
 	if ( myrank == size-1 ){
 		Data = (int *) malloc( sizeof(int) * last_node_size *ts );
+		
 	}
 	else{
 		Data = (int *) malloc( sizeof(int) * node_size * ts );
@@ -79,6 +83,8 @@ int main( int argc, char *argv[])
 		else
 			MPI_Scatterv( NULL, NULL, NULL, MPI_INT, Data, node_size * ts , MPI_INT, 0 , MPI_COMM_WORLD );
 	}
+/*	
+	// print all the edges at every node  
 	if( myrank == 0 ){
 		for( i=0; i<node_size * ts ; i += ts) 
 			printf("%d %d %d\n", Data[i], Data[i+1], Data[i+2] );
@@ -99,7 +105,70 @@ int main( int argc, char *argv[])
                         printf("%d %d %d\n", Data[i], Data[i+1], Data[i+2] );
 
         }
-
+*/
+	/*
+	 * Nodes  : This will tells that parent of the node with respect to 
+	 * 		this node
+	 * Leaders : This will contain leaders list till now
+	 * Bcast_leaders : This will be broadcasted to all other nodes.
+	 * Num_of_leaders : Num_of_leaders is selected num of leaders;
+	 */
+	int *Nodes, Base = myrank * node_vert, *Leaders, *Bcast_leaders;
+        if ( myrank == size-1 ){
+                Nodes = (int *) malloc( sizeof(int) * last_node_vert );
+                Leaders = (int *) malloc( sizeof(int) * last_node_vert );
+                Bcast_leaders = (int *) malloc( sizeof(int) * last_node_vert );
+        	for( i=0; i<last_node_vert; i++){
+			Leaders[i] = -1;
+			Nodes[i] = -1;	
+		}
+	}
+        else{
+                Nodes = (int *) malloc( sizeof(int) * node_vert );	
+                Leaders = (int *) malloc( sizeof(int) * node_vert );
+              	Bcast_leaders = (int *) malloc( sizeof(int) * node_vert );
+		for( i=0; i<node_vert; i++){
+			Nodes[i] = -1;
+			Leaders[i] = -1;
+		}
+        }
+	
+	int Num_of_leaders;
+	if( myrank == size-1 ){
+		Num_of_leaders = find_leaders( Leaders, Bcast_leaders, last_node_vert, Base);
+		for(i=0; i<last_node_vert ; i++)
+			printf("%d ", Leaders[i]);
+		for( i=0; i<Num_of_leaders ; i++)
+			printf(" %d ", Bcast_leaders[i]);
+	}
+	else{
+		Num_of_leaders = find_leaders( Leaders, Bcast_leaders, node_vert, Base);
+	}
+	if(myrank == 1){
+		 for(i=0; i<node_vert ; i++)
+                        printf("%d ", Leaders[i]);
+                for( i=0; i<Num_of_leaders ; i++)
+                        printf(" %d ", Bcast_leaders[i]);
+	}
 	MPI_Finalize();
 	return 0;
+}
+/*
+ * find_leaders function will find the leaders the the vertices that that node hold
+ * I am taking every node and genearating random probability if that probablity is
+ * greater than our desired probablity then it will consider that node has LEADER
+ */
+int find_leaders( int *Leaders, int *Bcast_leaders, int node_vert, int Base){
+	int i, count = 0, rand_value;
+	srand( getpid() );
+	for( i = 0; i< node_vert; i++){
+		rand_value = (int)rand()  % 100;
+		float rand_prob = (float) rand_value/100;
+		printf("\n %f ", (float)rand_value/100 );
+		if( rand_prob >= Prob && Leaders[i] ){
+			Leaders[i] = 0;
+			Bcast_leaders[count++] = Base + i;
+		}
+	}
+	return count;
 }
