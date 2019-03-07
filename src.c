@@ -169,6 +169,7 @@ int main( int argc, char *argv[])
 
 	}
 	
+	MPI_Barrier ( MPI_COMM_WORLD );
 	int *Alltocounts, *AlltoData;
 	Alltocounts = (int *) malloc( sizeof(int) * size );
 	for( i=0; i<size; i++)
@@ -178,12 +179,16 @@ int main( int argc, char *argv[])
 	if( myrank == size-1)
 	{
 		find_contract_edges(size, Data, last_node_size, Alltocounts, Total_Leaders);
-		for( i=0; i<size; i++)
-			printf("%d ",Alltocounts[i]);
+	//	for( i=0; i<size; i++)
+	//		printf("%d ",Alltocounts[i]);
 	}
 	else
 	{
-	//	find_contract_edges(size, Data, node_size, Alltocounts, Total_Leaders);
+		find_contract_edges(size, Data, node_size, Alltocounts, Total_Leaders);
+		printf("sivan\n");
+		if(myrank == 0)
+			for( i=0; i<size; i++)
+				printf("%d ", Alltocounts[i]);
 	}
 
 
@@ -221,19 +226,15 @@ void find_contract_edges(int size, int *Data, int node_size, int *Alltocounts , 
 	int i, node;
 	for( i=0 ; i<node_size * ts; i += ts)
 	{
-		printf(" %d %d %d ", Data[i], Data[i+1], Data[i+2]);
 		if(!Data[i+2])
 		{
-			printf(" %d %d %d ", Data[i], Data[i+1], Data[i+2]);
 			if( Total_Leaders[ Data[i] ] && Total_Leaders[ Data[i+1] ] )
 			{
 				// if both vertices are leaders nothing to do
-				printf(" Both Leaders \n");
 			}
 			else if ( !Total_Leaders[ Data[i] ] && !Total_Leaders[ Data[i+1] ] )
 			{
 				// if both are not leaders nothing to do
-				printf("Both are non Leaders \n");
 			}
 			else
 			{
@@ -251,7 +252,6 @@ void find_contract_edges(int size, int *Data, int node_size, int *Alltocounts , 
 						node = size - 1;
                                         Alltocounts[node] += 1;
 				}
-				printf(" %d %d \n ", node, Alltocounts[node] );
 			}
 		}
 	}
