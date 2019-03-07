@@ -76,9 +76,6 @@ int main( int argc, char *argv[])
                         printf("%d ", displs[i]);
 
 		MPI_Scatterv( D, sendcnts, displs, MPI_INT, Data, node_size * ts, MPI_INT, myrank , MPI_COMM_WORLD ); 
-
-		free(sendcnts);
-		free(displs);
 	}
 	else{
 		if( myrank == size-1 )
@@ -137,43 +134,25 @@ int main( int argc, char *argv[])
         }
 	
 	int Num_of_leaders;
-	int *Total_Leaders;
-	Total_Leaders = (int *) malloc( sizeof(int) * V );
-
-	int *recvcnts = (int *) malloc( sizeof(int) * size );
-	for( i=0; i < size; i++)
-        	recvcnts[i] = node_vert ;
-        	recvcnts[size-1] = last_node_vert;
-        int *displs = (int *) malloc ( sizeof(int) * size);
-	for( i=1,displs[0] = 0; i<size; i++)
-        	displs[i] = displs[i-1] + node_vert;
-
 	if( myrank == size-1 ){
 		Num_of_leaders = find_leaders( Leaders, Bcast_leaders, last_node_vert, Base);
 		for(i=0; i<last_node_vert ; i++)
-			printf("%d %d\n", Leaders[i], Bcast_leaders[i]);
-		
-		MPI_Allgatherv( Bcast_leaders, last_node_vert, MPI_INT, Total_Leaders, recvcnts, displs, MPI_INT, MPI_COMM_WORLD);  
-	
-		free(recvcnts);
-		free(displs);
-
-		for( i=0 ; i<V; i++)
-                printf("%d ", Total_Leaders[i]);
+			printf("%d ", Leaders[i]);
+		for( i=0; i<Num_of_leaders ; i++)
+			printf(" %d ", Bcast_leaders[i]);
 	}
 	else{
 		Num_of_leaders = find_leaders( Leaders, Bcast_leaders, node_vert, Base);
-		MPI_Allgatherv( Bcast_leaders, node_vert, MPI_INT, Total_Leaders, recvcnts, displs, MPI_INT, MPI_COMM_WORLD);
-
 	}
-	/*
-	 * MPI_Allreduce will count all the sums
-	 */	
+	if(myrank == 1){
+		 for(i=0; i<node_vert ; i++)
+                        printf("%d ", Leaders[i]);
+                for( i=0; i<Num_of_leaders ; i++)
+                        printf(" %d ", Bcast_leaders[i]);
+	}
 	MPI_Finalize();
 	return 0;
 }
-
-
 /*
  * find_leaders function will find the leaders the the vertices that that node hold
  * I am taking every node and genearating random probability if that probablity is
@@ -185,12 +164,11 @@ int find_leaders( int *Leaders, int *Bcast_leaders, int node_vert, int Base){
 	for( i = 0; i< node_vert; i++){
 		rand_value = (int)rand()  % 100;
 		float rand_prob = (float) rand_value/100;
+		printf("\n %f ", (float)rand_value/100 );
 		if( rand_prob >= Prob && Leaders[i] ){
-			Bcast_leaders[i] = Base + i;
-			count += 1;
+			Leaders[i] = 0;
+			Bcast_leaders[count++] = Base + i;
 		}
-		else
-			Bcast_leaders[i] = -1;
 	}
 	return count;
 }
