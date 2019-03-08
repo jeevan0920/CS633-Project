@@ -145,6 +145,12 @@ int main( int argc, char *argv[])
 	int *Total_Leaders;
 	Total_Leaders = (int *) malloc( sizeof(int) * V );
 
+	/*
+	 * recvcnts : It is recv_counts while doing Allgatherv
+	 * displs : where we put the data
+	 * MPI_Allgatherv : It is for broadcastint all the leaders it have to 
+	 * all other nodes.
+	 */
 	int *recvcnts = (int *) malloc( sizeof(int) * size );
 	for( i=0; i < size; i++)
         	recvcnts[i] = node_vert ;
@@ -174,6 +180,11 @@ int main( int argc, char *argv[])
 	MPI_Barrier ( MPI_COMM_WORLD );
 	printf("All should reach Barrier here\n");
 
+	/*
+	 * Alltocounts : This will count the edges to be sent to each node
+	 * AlltoData : This will store the edges to be sent to each node 
+	 * Contracted_edges : This will tells us to how many edges has been contracted
+	 */
 	int *Alltocounts, *AlltoData, Contracted_edges;
 	Alltocounts = (int *) malloc( sizeof(int) * size );
 	for( i=0; i<size; i++)
@@ -195,6 +206,9 @@ int main( int argc, char *argv[])
 
 	}
 	
+	/* 
+	 * This will print Alltocounts of every node means How many edges has been contracted and whom to sent.
+	 */
 	int j;
 	for( j=0; j< size; j++ ){
 		MPI_Barrier(MPI_COMM_WORLD);
@@ -206,10 +220,18 @@ int main( int argc, char *argv[])
 		printf("\n");	
 		}
 	}
+	/*
+	 * Alltoall_count : This will collect number of edges from every node ( Means the vertex belongs to This node
+	 * has been contracted some where else ) 
+	 * MPI_Alltoall : This will collect all the counts they are sending in MPI_Alltoallv
+	 */
 	int *Alltoall_count;
 	Alltoall_count = (int *) malloc( sizeof(int) * size );
 	MPI_Alltoall( Alltocounts, 1 , MPI_INT, Alltoall_count, 1 , MPI_INT, MPI_COMM_WORLD);
-
+	
+	 /*
+         * This will print Alltoall_count  of every node (Means how many edges each node is sent to this node)
+         */
         for( j=0; j< size; j++ ){
                 MPI_Barrier(MPI_COMM_WORLD);
                 if( myrank == j )
@@ -221,6 +243,10 @@ int main( int argc, char *argv[])
                 }
         }
 	
+	/*
+	 * sdispls : sending offsets to other nodes
+	 * rdispls : Recveing offset form other nodes
+	 */
 	int *sdispls, *rdispls, *Alltoall_data, count = 0;
 	sdispls = (int *) malloc( sizeof(int) * size );
 	rdispls = (int *) malloc( sizeof(int) * size );
@@ -231,22 +257,34 @@ int main( int argc, char *argv[])
 	Alltoall_data = (int *) malloc( sizeof(int) * count * 2 );
 	find_cummulative_displs( size, Alltocounts, sdispls);
 	find_cummulative_displs( size, Alltoall_count, rdispls);
+
+	/*
+	 * Printing sdispls, rdispls here to check
+	 */
 	for( j=0; j< size; j++ ){
                 MPI_Barrier(MPI_COMM_WORLD);
                 if( myrank == j )
                 {
                         for( i=0; i<size; i++)
                                 printf("%d %d  ", sdispls[i], rdispls[i] );
-
                 printf("\n");
                 }
         }
 	MPI_Barrier(MPI_COMM_WORLD);
+
+	/*
+	 * Alltocounts , Alltoall_count should be interms of how many MPI_INTEGERS
+	 * each edge will contain two Vertexes so. multiplied by 2. 
+	 */
 	for(i=0; i<size; i++)
 	{
 		Alltocounts[i] *= 2;
 		Alltoall_count[i] *= 2;
 	}
+
+	/*
+	 * printing All the contracted edges 
+	 */
 	for( j=0; j< size; j++ ){
                 MPI_Barrier(MPI_COMM_WORLD);
                 if( myrank == j )
@@ -259,11 +297,16 @@ int main( int argc, char *argv[])
                 printf("\n");
                 }
         }
-
+	/*
+	 * MPI_Alltoallv will get all the data that belongs to respective nodes. so that it will mark as a contracted vertex.
+	 */
 	MPI_Alltoallv( AlltoData, Alltocounts, sdispls, MPI_INT, Alltoall_data, Alltoall_count, rdispls, MPI_INT, MPI_COMM_WORLD);
 
 	setup_leader_contraction( Alltoall_count, Alltoall_data, Nodes , Base, size);	
 	
+	/*
+	 * After setup_leader_contraction checking what are edges are being contracted.
+	 */
   	for( j=0; j< size; j++ ){
                 MPI_Barrier(MPI_COMM_WORLD);
                 if( myrank == j )
