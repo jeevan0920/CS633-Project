@@ -10,6 +10,7 @@
 #define ts 3
 int find_leaders( int *leaders, int *Bcast_leaders, int node_vert , int Base);
 void find_contract_edges( int size, int *Data, int node_size, int *Alltocounts, int *Total_Leaders );
+void find_alltoallv_data( int size, int *Data, int node_size, int *Alltocounts, int *Total_Leaders, int *AlltoData);
 int main( int argc, char *argv[])
 {
 	int D[ne][ts] = {
@@ -168,8 +169,9 @@ int main( int argc, char *argv[])
 		MPI_Allgatherv( Bcast_leaders, node_vert, MPI_INT, Total_Leaders, recvcnts, displs, MPI_INT, MPI_COMM_WORLD);
 
 	}
-	
 	MPI_Barrier ( MPI_COMM_WORLD );
+	printf("All should reach Barrier here\n");
+
 	int *Alltocounts, *AlltoData;
 	Alltocounts = (int *) malloc( sizeof(int) * size );
 	for( i=0; i<size; i++)
@@ -179,16 +181,20 @@ int main( int argc, char *argv[])
 	if( myrank == size-1)
 	{
 		find_contract_edges(size, Data, last_node_size, Alltocounts, Total_Leaders);
-	//	for( i=0; i<size; i++)
-	//		printf("%d ",Alltocounts[i]);
+		find_alltoallv_data(size, Data, last_node_size, Alltocounts, Total_Leaders, AlltoData);
+		printf("After edges selection ");
+		for( i=0; i<size; i++)
+			printf("%d ",Alltocounts[i]);
 	}
 	else
 	{
 		find_contract_edges(size, Data, node_size, Alltocounts, Total_Leaders);
-		printf("sivan\n");
-		if(myrank == 0)
+		//find_alltoallv_data(size, Data, node_size, Alltocounts, Total_Leaders, AlltoData);
+
+	/*	if(myrank == 1)
 			for( i=0; i<size; i++)
 				printf("%d ", Alltocounts[i]);
+	*/
 	}
 
 
@@ -221,6 +227,12 @@ int find_leaders( int *Leaders, int *Bcast_leaders, int node_vert, int Base)
 	}
 	return count;
 }
+/*
+ * find_contract_edges function will find the how many edges are contracted  for each
+ * node.
+ * By this we can allocate memory for sending this data to all other nodes so that
+ * they will update nodes's parent pointer( Means that vertex has been contracted )
+ */
 void find_contract_edges(int size, int *Data, int node_size, int *Alltocounts , int *Total_Leaders)
 {
 	int i, node;
@@ -254,5 +266,63 @@ void find_contract_edges(int size, int *Data, int node_size, int *Alltocounts , 
 				}
 			}
 		}
+	}
+}
+void find_alltoallv_data( int size, int *Data, int node_size, int *Alltocounts, int *Total_Leaders, int *AlltoData)
+{
+	int i, node, count=0, local_count[size],cum_count[size], index ;
+	for( i=0,cum_count[0] = 0; i<size;  i++)
+	{
+		 count += Alltocounts[i];
+		 local_count[i] = 0;
+		 cum_count[i]= (count - Alltocounts[i]) * 2;
+		 printf("%d  ", cum_count[i] );
+	}
+	printf("%d\n", count);
+
+	AlltoData = (int *) malloc( sizeof(int) * count * 2 );
+	for( i=0 ; i<node_size * ts; i += ts)
+        {
+                if(!Data[i+2])
+                {
+                        if( Total_Leaders[ Data[i] ] && Total_Leaders[ Data[i+1] ] )
+                        {
+                                // if both vertices are leaders nothing to do
+                        }
+                        else if ( !Total_Leaders[ Data[i] ] && !Total_Leaders[ Data[i+1] ] )
+                        {
+                                // if both are not leaders nothing to do
+                        }
+                        else
+                        {
+                                if( Total_Leaders[ Data[i] ] )
+                                {
+                                        node = Data[i + 1] / size;
+                                        if (node > size-1 )
+                                                node = size - 1;
+					index = cum_count[node] + local_count[node] * 2 ;
+                                        AlltoData[index] = Data[i+1];
+                                        AlltoData[index +1] = Data[i];
+
+                                        local_count[node] += 1;
+
+                                }
+                                else
+                                {
+                                        node = Data[i] / size;
+					if (node > size-1)
+						node = size - 1;
+					index = cum_count[node] + local_count[node] * 2 ;
+                                        AlltoData[index] = Data[i];
+                                        AlltoData[index +1] = Data[i + 1];
+                                        
+					local_count[node] += 1;
+                                }
+                        }
+                }
+        }
+	for( i=0; i<count * 2; i += 2)
+	{
+		printf("%d %d\n", AlltoData[i], AlltoData[i+1] );
 	}
 }
