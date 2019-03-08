@@ -9,10 +9,10 @@
 #define ne 24
 #define ts 3
 int find_leaders( int *leaders, int *Bcast_leaders, int node_vert , int Base);
-int find_contract_edges( int size, int node_vert, int *Data, int node_size, int *Alltocounts, int *Total_Leaders );
-void find_alltoallv_data( int size, int node_vert, int *Data, int node_size, int *Alltocounts, int *Total_Leaders, int *AlltoData);
+int find_contract_edges( int size, int *Data, int node_size, int *Alltocounts, int *Total_Leaders );
+void find_alltoallv_data( int size, int *Data, int node_size, int *Alltocounts, int *Total_Leaders, int *AlltoData);
 void find_cummulative_displs( int size, int *Alltocounts, int *sdispls);
-void setup_leader_contraction(int *Alltoall_count, int *Alltoall_data, int *Nodes, int Base , int size);
+void setup_leader_contraction(int *Alltoall_count, int *Alltoall_data, int *Nodes );
 int main( int argc, char *argv[])
 {
 	int D[ne][ts] = {
@@ -182,16 +182,16 @@ int main( int argc, char *argv[])
 	}
 	if( myrank == size-1)
 	{
-		Contracted_edges = find_contract_edges(size, last_node_vert, Data, last_node_size, Alltocounts, Total_Leaders);
+		Contracted_edges = find_contract_edges(size, Data, last_node_size, Alltocounts, Total_Leaders);
 		AlltoData = (int *) malloc( sizeof(int) * Contracted_edges * 2 );
-		find_alltoallv_data(size, last_node_vert, Data, last_node_size, Alltocounts, Total_Leaders, AlltoData);
+		find_alltoallv_data(size, Data, last_node_size, Alltocounts, Total_Leaders, AlltoData);
 		printf("After edges selection ");
 	}
 	else
 	{
-		Contracted_edges = find_contract_edges(size, node_vert, Data, node_size, Alltocounts, Total_Leaders);
+		Contracted_edges = find_contract_edges(size, Data, node_size, Alltocounts, Total_Leaders);
 		AlltoData = (int *) malloc( sizeof(int) * Contracted_edges * 2 );
-		find_alltoallv_data(size, node_vert, Data, node_size, Alltocounts, Total_Leaders, AlltoData);
+		find_alltoallv_data(size, Data, node_size, Alltocounts, Total_Leaders, AlltoData);
 
 	}
 	
@@ -262,48 +262,28 @@ int main( int argc, char *argv[])
 
 	MPI_Alltoallv( AlltoData, Alltocounts, sdispls, MPI_INT, Alltoall_data, Alltoall_count, rdispls, MPI_INT, MPI_COMM_WORLD);
 
-	setup_leader_contraction( Alltoall_count, Alltoall_data, Nodes , Base, size);	
-	
-  	for( j=0; j< size; j++ ){
+	for( j=0; j< size; j++ ){
                 MPI_Barrier(MPI_COMM_WORLD);
                 if( myrank == j )
                 {
-                        int k = 0;
-                        for( i=0; i<size; i++)
-                                k += Alltoall_count[i];
+			int k = 0;
+			for( i=0; i<size; i++)
+				k += Alltoall_count[i];
                  printf(" Recieved Edges  : %d ", k/2 );
 
                          for(i=0; i < k; i += 2)
                          printf("%d %d  ", Alltoall_data[i], Alltoall_data[i+1] );
-		if( myrank == size -1 )
-			node_vert = last_node_vert;
-                printf("\n Parent Vertex: %d ", node_vert );
-			for(i=0; i < node_vert; i++)
-			{
-				printf("%d %d  ", Base + i, Nodes[i] );
-			}
-		printf("\n");
+
+                printf("\n");
                 }
         }
 
+	setup_leader_contraction( Alltoall_count, Alltoall_data, Nodes );	
 	MPI_Finalize();
 	return 0;
 }
+void setup_leader_contraction(int *Alltoall_count, int *Alltoall_data, int *Nodes ){
 
-/*
- * This function will contract the vertex based on Alltoall_data( Recived by all
- * other nodes )
- * It will mark a parent_vertex in Node list;
- */
-void setup_leader_contraction(int *Alltoall_count, int *Alltoall_data, int *Nodes, int Base, int size )
-{
-	 int k = 0, index, i ;
-         for( i=0; i<size; i++)
-                 k += Alltoall_count[i];
-         for(i=0; i < k; i += 2){
-		index = Alltoall_data[i] - Base;
-		Nodes[ index ] = Alltoall_data[ i + 1 ] ;
- 	 }
 }
 /*
  * This function will find the send displacements , Recevie displacements
@@ -350,7 +330,7 @@ int find_leaders( int *Leaders, int *Bcast_leaders, int node_vert, int Base)
  * By this we can allocate memory for sending this data to all other nodes so that
  * they will update nodes's parent pointer( Means that vertex has been contracted )
  */
-int find_contract_edges(int size,int node_vert, int *Data, int node_size, int *Alltocounts , int *Total_Leaders)
+int find_contract_edges(int size, int *Data, int node_size, int *Alltocounts , int *Total_Leaders)
 {
 	int i, node, count = 0;
 	for( i=0 ; i<node_size * ts; i += ts)
@@ -370,14 +350,14 @@ int find_contract_edges(int size,int node_vert, int *Data, int node_size, int *A
 				count += 1;
 				if( Total_Leaders[ Data[i] ] )
 				{
-					node = Data[i + 1] / node_vert;
+					node = Data[i + 1] / size;
 					if (node > size-1 )
 						node = size - 1; 
 					Alltocounts[node] += 1;
 				}
 				else
 				{
-					node = Data[i] / node_vert;
+					node = Data[i] / size;
 					if (node > size-1)
 						node = size - 1;
                                         Alltocounts[node] += 1;
@@ -392,7 +372,7 @@ int find_contract_edges(int size,int node_vert, int *Data, int node_size, int *A
  * edge contracted information 
  * AlltoData : It is the data to be sent. here only that memory been allocated.
  */
-void find_alltoallv_data( int size, int node_vert, int *Data, int node_size, int *Alltocounts, int *Total_Leaders, int *AlltoData)
+void find_alltoallv_data( int size, int *Data, int node_size, int *Alltocounts, int *Total_Leaders, int *AlltoData)
 {
 	int i, node, count=0, local_count[size],cum_count[size], index ;
 	for( i=0,cum_count[0] = 0; i<size;  i++)
@@ -419,7 +399,7 @@ void find_alltoallv_data( int size, int node_vert, int *Data, int node_size, int
                         {
                                 if( Total_Leaders[ Data[i] ] )
                                 {
-                                        node = Data[i + 1] / node_vert;
+                                        node = Data[i + 1] / size;
                                         if (node > size-1 )
                                                 node = size - 1;
 					index = cum_count[node] + local_count[node] * 2 ;
@@ -432,7 +412,7 @@ void find_alltoallv_data( int size, int node_vert, int *Data, int node_size, int
                                 }
                                 else
                                 {
-                                        node = Data[i] / node_vert;
+                                        node = Data[i] / size;
 					if (node > size-1)
 						node = size - 1;
 					index = cum_count[node] + local_count[node] * 2 ;
