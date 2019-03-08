@@ -9,8 +9,10 @@
 #define ne 24
 #define ts 3
 int find_leaders( int *leaders, int *Bcast_leaders, int node_vert , int Base);
-void find_contract_edges( int size, int *Data, int node_size, int *Alltocounts, int *Total_Leaders );
+int find_contract_edges( int size, int *Data, int node_size, int *Alltocounts, int *Total_Leaders );
 void find_alltoallv_data( int size, int *Data, int node_size, int *Alltocounts, int *Total_Leaders, int *AlltoData);
+void find_cummulative_displs( int size, int *Alltocounts, int *sdispls);
+void setup_leader_contraction(int *Alltoall_count, int *Alltoall_data, int *Nodes );
 int main( int argc, char *argv[])
 {
 	int D[ne][ts] = {
@@ -172,7 +174,7 @@ int main( int argc, char *argv[])
 	MPI_Barrier ( MPI_COMM_WORLD );
 	printf("All should reach Barrier here\n");
 
-	int *Alltocounts, *AlltoData;
+	int *Alltocounts, *AlltoData, Contracted_edges;
 	Alltocounts = (int *) malloc( sizeof(int) * size );
 	for( i=0; i<size; i++)
 	{
@@ -180,32 +182,127 @@ int main( int argc, char *argv[])
 	}
 	if( myrank == size-1)
 	{
-		find_contract_edges(size, Data, last_node_size, Alltocounts, Total_Leaders);
+		Contracted_edges = find_contract_edges(size, Data, last_node_size, Alltocounts, Total_Leaders);
+		AlltoData = (int *) malloc( sizeof(int) * Contracted_edges * 2 );
 		find_alltoallv_data(size, Data, last_node_size, Alltocounts, Total_Leaders, AlltoData);
 		printf("After edges selection ");
-		for( i=0; i<size; i++)
-			printf("%d ",Alltocounts[i]);
 	}
 	else
 	{
-		find_contract_edges(size, Data, node_size, Alltocounts, Total_Leaders);
-		//find_alltoallv_data(size, Data, node_size, Alltocounts, Total_Leaders, AlltoData);
+		Contracted_edges = find_contract_edges(size, Data, node_size, Alltocounts, Total_Leaders);
+		AlltoData = (int *) malloc( sizeof(int) * Contracted_edges * 2 );
+		find_alltoallv_data(size, Data, node_size, Alltocounts, Total_Leaders, AlltoData);
 
-	/*	if(myrank == 1)
-			for( i=0; i<size; i++)
-				printf("%d ", Alltocounts[i]);
-	*/
 	}
+	
+	int j;
+	for( j=0; j< size; j++ ){
+		MPI_Barrier(MPI_COMM_WORLD);
+		if( myrank == j )
+		{
+			for( i=0; i<size; i++)
+                        	printf("%d ",Alltocounts[i]);
 
+		printf("\n");	
+		}
+	}
+	int *Alltoall_count;
+	Alltoall_count = (int *) malloc( sizeof(int) * size );
+	MPI_Alltoall( Alltocounts, 1 , MPI_INT, Alltoall_count, 1 , MPI_INT, MPI_COMM_WORLD);
 
-	/*
-	 * MPI_Allreduce will count all the sums
-	 */	
+        for( j=0; j< size; j++ ){
+                MPI_Barrier(MPI_COMM_WORLD);
+                if( myrank == j )
+                {
+                        for( i=0; i<size; i++)
+                                printf("%d ",Alltoall_count[i]);
+
+                printf("\n");
+                }
+        }
+	
+	int *sdispls, *rdispls, *Alltoall_data, count = 0;
+	sdispls = (int *) malloc( sizeof(int) * size );
+	rdispls = (int *) malloc( sizeof(int) * size );
+	for( i=0; i<size; i++)
+	{
+		count += Alltoall_count[i];
+	}
+	Alltoall_data = (int *) malloc( sizeof(int) * count * 2 );
+	find_cummulative_displs( size, Alltocounts, sdispls);
+	find_cummulative_displs( size, Alltoall_count, rdispls);
+	for( j=0; j< size; j++ ){
+                MPI_Barrier(MPI_COMM_WORLD);
+                if( myrank == j )
+                {
+                        for( i=0; i<size; i++)
+                                printf("%d %d  ", sdispls[i], rdispls[i] );
+
+                printf("\n");
+                }
+        }
+	MPI_Barrier(MPI_COMM_WORLD);
+	for(i=0; i<size; i++)
+	{
+		Alltocounts[i] *= 2;
+		Alltoall_count[i] *= 2;
+	}
+	for( j=0; j< size; j++ ){
+                MPI_Barrier(MPI_COMM_WORLD);
+                if( myrank == j )
+                {
+		 printf(" Contracted edges : %d ", Contracted_edges );
+
+			 for(i=0; i < Contracted_edges * 2; i += 2)
+                         printf("%d %d  ", AlltoData[i], AlltoData[i+1] );
+
+                printf("\n");
+                }
+        }
+
+	MPI_Alltoallv( AlltoData, Alltocounts, sdispls, MPI_INT, Alltoall_data, Alltoall_count, rdispls, MPI_INT, MPI_COMM_WORLD);
+
+	for( j=0; j< size; j++ ){
+                MPI_Barrier(MPI_COMM_WORLD);
+                if( myrank == j )
+                {
+			int k = 0;
+			for( i=0; i<size; i++)
+				k += Alltoall_count[i];
+                 printf(" Recieved Edges  : %d ", k/2 );
+
+                         for(i=0; i < k; i += 2)
+                         printf("%d %d  ", Alltoall_data[i], Alltoall_data[i+1] );
+
+                printf("\n");
+                }
+        }
+
+	setup_leader_contraction( Alltoall_count, Alltoall_data, Nodes );	
 	MPI_Finalize();
 	return 0;
 }
+void setup_leader_contraction(int *Alltoall_count, int *Alltoall_data, int *Nodes ){
 
-
+}
+/*
+ * This function will find the send displacements , Recevie displacements
+ * to MPI_Alltoallv() function 
+ */
+void find_cummulative_displs( int size, int *Alltocounts, int *sdispls)
+{
+	int i, count = 0;
+	for( i=0; i < size; i++ )
+	{
+		 count += Alltocounts[i];
+                 sdispls[i]= (count - Alltocounts[i]) * 2;
+                 //printf("%d  ", cum_count[i] );
+	}
+	if( Alltocounts[ size-1 ] == 0 )
+	{
+		sdispls[ size-1 ] = sdispls [ size -2 ] ;
+	}
+}
 /*
  * find_leaders function will find the leaders the the vertices that that node hold
  * I am taking every node and genearating random probability if that probablity is
@@ -233,9 +330,9 @@ int find_leaders( int *Leaders, int *Bcast_leaders, int node_vert, int Base)
  * By this we can allocate memory for sending this data to all other nodes so that
  * they will update nodes's parent pointer( Means that vertex has been contracted )
  */
-void find_contract_edges(int size, int *Data, int node_size, int *Alltocounts , int *Total_Leaders)
+int find_contract_edges(int size, int *Data, int node_size, int *Alltocounts , int *Total_Leaders)
 {
-	int i, node;
+	int i, node, count = 0;
 	for( i=0 ; i<node_size * ts; i += ts)
 	{
 		if(!Data[i+2])
@@ -250,6 +347,7 @@ void find_contract_edges(int size, int *Data, int node_size, int *Alltocounts , 
 			}
 			else
 			{
+				count += 1;
 				if( Total_Leaders[ Data[i] ] )
 				{
 					node = Data[i + 1] / size;
@@ -267,7 +365,13 @@ void find_contract_edges(int size, int *Data, int node_size, int *Alltocounts , 
 			}
 		}
 	}
+	return count;
 }
+/*
+ * This function will set up data format to send all other node about 
+ * edge contracted information 
+ * AlltoData : It is the data to be sent. here only that memory been allocated.
+ */
 void find_alltoallv_data( int size, int *Data, int node_size, int *Alltocounts, int *Total_Leaders, int *AlltoData)
 {
 	int i, node, count=0, local_count[size],cum_count[size], index ;
@@ -276,11 +380,9 @@ void find_alltoallv_data( int size, int *Data, int node_size, int *Alltocounts, 
 		 count += Alltocounts[i];
 		 local_count[i] = 0;
 		 cum_count[i]= (count - Alltocounts[i]) * 2;
-		 printf("%d  ", cum_count[i] );
+		 //printf("%d  ", cum_count[i] );
 	}
-	printf("%d\n", count);
 
-	AlltoData = (int *) malloc( sizeof(int) * count * 2 );
 	for( i=0 ; i<node_size * ts; i += ts)
         {
                 if(!Data[i+2])
@@ -305,6 +407,7 @@ void find_alltoallv_data( int size, int *Data, int node_size, int *Alltocounts, 
                                         AlltoData[index +1] = Data[i];
 
                                         local_count[node] += 1;
+					Data[i+2] = 1;
 
                                 }
                                 else
@@ -317,12 +420,15 @@ void find_alltoallv_data( int size, int *Data, int node_size, int *Alltocounts, 
                                         AlltoData[index +1] = Data[i + 1];
                                         
 					local_count[node] += 1;
+					Data[i+2] = 1;
                                 }
                         }
                 }
         }
-	for( i=0; i<count * 2; i += 2)
+	/*	
+ 	for( i=0; i<count * 2; i += 2)
 	{
 		printf("%d %d\n", AlltoData[i], AlltoData[i+1] );
 	}
+	*/
 }
