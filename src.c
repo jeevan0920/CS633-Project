@@ -6,7 +6,7 @@
 
 #define Prob 0.7
 #define V 17
-#define ne 24
+#define ne 25
 #define ts 3
 int find_leaders( int *leaders, int *Bcast_leaders, int node_vert , int Base);
 int find_contract_edges( int size, int node_vert, int *Data, int node_size, int *Alltocounts, int *Total_Leaders );
@@ -41,7 +41,8 @@ int main( int argc, char *argv[])
 		5,3,0,
 		1,3,0,
 		9,15,0,
-		9,16,0
+		9,16,0,
+		7,9,0,
 	};
 
 	int myrank, size, i;
@@ -194,19 +195,14 @@ int main( int argc, char *argv[])
 		Alltocounts[i] = 0;
 	}
 	if( myrank == size-1)
-	{
-		Contracted_edges = find_contract_edges(size, last_node_vert, Data, last_node_size, Alltocounts, Total_Leaders);
-		AlltoData = (int *) malloc( sizeof(int) * Contracted_edges * 2 );
-		find_alltoallv_data(size, last_node_vert, Data, last_node_size, Alltocounts, Total_Leaders, AlltoData);
-		printf("After edges selection ");
-	}
-	else
-	{
-		Contracted_edges = find_contract_edges(size, node_vert, Data, node_size, Alltocounts, Total_Leaders);
-		AlltoData = (int *) malloc( sizeof(int) * Contracted_edges * 2 );
-		find_alltoallv_data(size, node_vert, Data, node_size, Alltocounts, Total_Leaders, AlltoData);
+	{	
+		node_vert = last_node_vert;
+		node_size = last_node_size;
 
 	}
+	Contracted_edges = find_contract_edges(size, node_vert, Data, node_size, Alltocounts, Total_Leaders);
+	AlltoData = (int *) malloc( sizeof(int) * Contracted_edges * 2 );
+	find_alltoallv_data(size, node_vert, Data, node_size, Alltocounts, Total_Leaders, AlltoData);
 	
 	/* 
 	 * This will print Alltocounts of every node means How many edges has been contracted and whom to sent.
@@ -331,9 +327,10 @@ int main( int argc, char *argv[])
                 }
         }
 	
-
+	MPI_Barrier(MPI_COMM_WORLD);
 	recvcnts = (int *) malloc( sizeof(int) * size );
-        for( i=0; i < size; i++)
+        last_node_size = ne/size + ne % size, node_size = ne/size, last_node_vert = V/size + V % size, node_vert = V/size;
+	for( i=0; i < size; i++)
                 recvcnts[i] = node_vert ;
                 recvcnts[size-1] = last_node_vert;
         displs = (int *) malloc ( sizeof(int) * size);
@@ -345,23 +342,64 @@ int main( int argc, char *argv[])
 		node_vert = last_node_vert;
 		node_size = last_node_size;
 	}
+	for( j=0; j< size; j++)
+        {
+                MPI_Barrier( MPI_COMM_WORLD );
+                if( myrank == j)
+                {
+                        for( i=0; i< node_vert ; i++ )
+                        {
+                                printf("%d ", Nodes[i] );
+                        }
+                        printf("\n");
+                }
+
+        }
+	MPI_Barrier(MPI_COMM_WORLD);
 	MPI_Allgatherv( Nodes, node_vert, MPI_INT, Total_Clist, recvcnts, displs, MPI_INT, MPI_COMM_WORLD);
-	if( myrank == 0)
+	for( j=size-1; j>=0; j--)
 	{
-		for( i=0; i< V; i++ )
+		MPI_Barrier( MPI_COMM_WORLD );
+		if( myrank == j)
+                {
+			for( i=0; i< V; i++ )
+			{
+				printf("%d ", Total_Clist[i] );
+			}
+			printf("\n");
+		}
+
+	}
+
+	//relink_edges( node_size, Total_Clist, Data );
+ 	for( j=0; j< size; j++ ){
+                MPI_Barrier(MPI_COMM_WORLD);
+                if(myrank == j)
+                {
+                        for( i=0; i<node_size * ts; i += ts)
+                        {
+                             // printf("%d %d %d \n", Data[i], Data[i+1], Data[i+2] );
+                        }
+                }
+        }
+	MPI_Barrier( MPI_COMM_WORLD);
+	printf("\n");
+	MPI_Barrier( MPI_COMM_WORLD);
+	for(j=0; j< size; j++)
+	{
+		MPI_Barrier(MPI_COMM_WORLD);
+		if(myrank == j)
 		{
-			printf("%d ", Total_Clist[i] );
+			relink_edges( node_size, Total_Clist, Data );
 		}
 	}
-	relink_edges( node_size, Total_Clist, Data );
-
 	for( j=0; j< size; j++ ){
                 MPI_Barrier(MPI_COMM_WORLD);
 		if(myrank == j)
 		{
 			for( i=0; i<node_size * ts; i += ts)
 			{
-				printf("%d %d %d \n", Data[i], Data[i+1], Data[i+2] );
+	//			printf("%d %d %d \n", Data[i], Data[i+1], Data[i+2] );
 			}
 		}
         }
@@ -379,6 +417,7 @@ void relink_edges( int node_size, int *Total_Clist, int *Data)
         {
                 if(!Data[ i+2 ])
                 {
+			printf("Before %d %d %d %d %d \n",Data[i], Total_Clist[ Data[i] ], Data[i+1], Total_Clist[ Data[i+1] ], Data[i+2] );
                         if( Total_Clist[ Data[i] ] == -1  &&  Total_Clist[ Data[i+1] ] == -1 )
                         {
                                 // if both vertices are not yet been contracted.
@@ -386,7 +425,6 @@ void relink_edges( int node_size, int *Total_Clist, int *Data)
                         else if ( Total_Clist[ Data[i] ] != -1 && Total_Clist[ Data[i+1] ] != -1 )
                         {
                                 // if both vertice are non-leaders
-				printf("non-leaders %d %d %d\n", Data[i], Data[i+1], Data[i+2] );
 				Data[ i ] = Total_Clist[ Data[i] ];
 				Data[ i+1 ] = Total_Clist[ Data[i+1] ] ;
 				 if( Data[ i ] == Data [ i+ 1 ] )
@@ -412,6 +450,7 @@ void relink_edges( int node_size, int *Total_Clist, int *Data)
 				}
                         }
                 }
+		printf("After %d %d %d\n",Data[i], Data[i+1], Data[i+2] );
         }
 }
 
