@@ -1,10 +1,10 @@
 #include <stdio.h>
-#include <string.h>
+#include <string.h> 
 #include "mpi.h"
 #include <stdlib.h>
 #include <unistd.h>
 
-#define Prob 0.5
+#define Prob 0.7
 #define V 17
 #define ne 24
 #define ts 3
@@ -13,6 +13,8 @@ int find_contract_edges( int size, int node_vert, int *Data, int node_size, int 
 void find_alltoallv_data( int size, int node_vert, int *Data, int node_size, int *Alltocounts, int *Total_Leaders, int *AlltoData);
 void find_cummulative_displs( int size, int *Alltocounts, int *sdispls);
 void setup_leader_contraction(int *Alltoall_count, int *Alltoall_data, int *Nodes, int Base , int size);
+void relink_edges( int node_size, int *Total_Clist, int *Data);
+
 int main( int argc, char *argv[])
 {
 	int D[ne][ts] = {
@@ -328,9 +330,89 @@ int main( int argc, char *argv[])
 		printf("\n");
                 }
         }
+	
+
+	recvcnts = (int *) malloc( sizeof(int) * size );
+        for( i=0; i < size; i++)
+                recvcnts[i] = node_vert ;
+                recvcnts[size-1] = last_node_vert;
+        displs = (int *) malloc ( sizeof(int) * size);
+        for( i=1,displs[0] = 0; i<size; i++)
+                displs[i] = displs[i-1] + node_vert;
+	int *Total_Clist = (int *) malloc( sizeof(int) * V);
+	if( myrank == size-1 )
+	{
+		node_vert = last_node_vert;
+		node_size = last_node_size;
+	}
+	MPI_Allgatherv( Nodes, node_vert, MPI_INT, Total_Clist, recvcnts, displs, MPI_INT, MPI_COMM_WORLD);
+	if( myrank == 0)
+	{
+		for( i=0; i< V; i++ )
+		{
+			printf("%d ", Total_Clist[i] );
+		}
+	}
+	relink_edges( node_size, Total_Clist, Data );
+
+	for( j=0; j< size; j++ ){
+                MPI_Barrier(MPI_COMM_WORLD);
+		if(myrank == j)
+		{
+			for( i=0; i<node_size * ts; i += ts)
+			{
+				printf("%d %d %d \n", Data[i], Data[i+1], Data[i+2] );
+			}
+		}
+        }
 
 	MPI_Finalize();
 	return 0;
+}
+/*
+ * re allocate edges
+ */
+void relink_edges( int node_size, int *Total_Clist, int *Data)
+{
+	int i, node;
+        for( i=0 ; i<node_size * ts; i += ts)
+        {
+                if(!Data[ i+2 ])
+                {
+                        if( Total_Clist[ Data[i] ] == -1  &&  Total_Clist[ Data[i+1] ] == -1 )
+                        {
+                                // if both vertices are not yet been contracted.
+                        }
+                        else if ( Total_Clist[ Data[i] ] != -1 && Total_Clist[ Data[i+1] ] != -1 )
+                        {
+                                // if both vertice are non-leaders
+				printf("non-leaders %d %d %d\n", Data[i], Data[i+1], Data[i+2] );
+				Data[ i ] = Total_Clist[ Data[i] ];
+				Data[ i+1 ] = Total_Clist[ Data[i+1] ] ;
+				 if( Data[ i ] == Data [ i+ 1 ] )
+                                {
+                                        Data[ i+2 ] = 1;
+                                }
+                        }
+                        else
+                        {	
+				// one leader one non-leader
+				
+				if( Total_Clist[ Data[i] ] == -1 )
+				{
+					Data[ i+1 ] = Total_Clist[ Data[i+1] ] ;
+				}
+				else
+				{
+					Data [ i ] = Total_Clist[ Data[i] ];
+				}
+				if( Data[ i ] == Data [ i+ 1 ] )
+				{
+					Data[ i+2 ] = 1;
+				}
+                        }
+                }
+        }
 }
 
 /*
@@ -396,6 +478,7 @@ int find_leaders( int *Leaders, int *Bcast_leaders, int node_vert, int Base)
 int find_contract_edges(int size,int node_vert, int *Data, int node_size, int *Alltocounts , int *Total_Leaders)
 {
 	int i, node, count = 0;
+	node_vert = V/size;
 	for( i=0 ; i<node_size * ts; i += ts)
 	{
 		if(!Data[i+2])
@@ -438,6 +521,7 @@ int find_contract_edges(int size,int node_vert, int *Data, int node_size, int *A
 void find_alltoallv_data( int size, int node_vert, int *Data, int node_size, int *Alltocounts, int *Total_Leaders, int *AlltoData)
 {
 	int i, node, count=0, local_count[size],cum_count[size], index ;
+	node_vert = V/size;
 	for( i=0,cum_count[0] = 0; i<size;  i++)
 	{
 		 count += Alltocounts[i];
@@ -470,7 +554,7 @@ void find_alltoallv_data( int size, int node_vert, int *Data, int node_size, int
                                         AlltoData[index +1] = Data[i];
 
                                         local_count[node] += 1;
-					Data[i+2] = 1;
+			//		Data[i+2] = 1;
 
                                 }
                                 else
@@ -483,7 +567,7 @@ void find_alltoallv_data( int size, int node_vert, int *Data, int node_size, int
                                         AlltoData[index +1] = Data[i + 1];
                                         
 					local_count[node] += 1;
-					Data[i+2] = 1;
+			//		Data[i+2] = 1;
                                 }
                         }
                 }
