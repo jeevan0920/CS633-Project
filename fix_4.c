@@ -3,20 +3,17 @@
 #include "mpi.h"
 #include <stdlib.h>
 #include <unistd.h>
-#include <time.h>
 
 #define Prob 0.5
 #define V 17
 #define ne 25
 #define ts 3
-int CURRENT_ITERATE = 1;
 int find_leaders( int *leaders, int *Bcast_leaders, int node_vert , int Base);
 int find_contract_edges( int size, int node_vert, int *Data, int node_size, int *Alltocounts, int *Total_Leaders );
 void find_alltoallv_data( int size, int node_vert, int *Data, int node_size, int *Alltocounts, int *Total_Leaders, int *AlltoData);
 void find_cummulative_displs( int size, int *Alltocounts, int *sdispls);
 void setup_leader_contraction(int *Alltoall_count, int *Alltoall_data, int *Nodes, int Base , int size);
-unsigned int relink_edges( int node_size, int *Total_Clist, int *Data);
-void Broadcast_Leaders(int myrank, int size, int node_vert, int last_node_vert, int *Leaders, int *Bcast_Leaders, int *Total_Leaders, int Base);
+void relink_edges( int node_size, int *Total_Clist, int *Data);
 
 int main( int argc, char *argv[])
 {
@@ -66,6 +63,7 @@ int main( int argc, char *argv[])
 	int *Data;
 	if ( myrank == size-1 ){
 		Data = (int *) malloc( sizeof(int) * last_node_size *ts );
+		printf( "==================================================================\n Intial Edges list : \n");
 	}
 	else{
 		Data = (int *) malloc( sizeof(int) * node_size * ts );
@@ -125,8 +123,7 @@ int main( int argc, char *argv[])
 	 * Total_Leadres : This list contain all the leaders present round;
 	 */
 	int *Nodes, Base = myrank * node_vert, *Leaders, *Bcast_leaders;
-        unsigned int edges_Left, edges_Next_iter = ne;
-	if ( myrank == size-1 ){
+        if ( myrank == size-1 ){
                 Nodes = (int *) malloc( sizeof(int) * last_node_vert );
                 Leaders = (int *) malloc( sizeof(int) * last_node_vert );
                 Bcast_leaders = (int *) malloc( sizeof(int) * last_node_vert );
@@ -148,13 +145,47 @@ int main( int argc, char *argv[])
 	int Num_of_leaders;
 	int *Total_Leaders;
 	Total_Leaders = (int *) malloc( sizeof(int) * V );
-	int sample = 4;
-while ( edges_Next_iter )	
-{
-	last_node_size = ne/size + ne % size, node_size = ne/size, last_node_vert = V/size + V % size, node_vert = V/size;
-	Broadcast_Leaders(myrank, size, node_vert, last_node_vert, Nodes, Bcast_leaders, Total_Leaders, Base);
-	
 
+	/*
+	 * recvcnts : It is recv_counts while doing Allgatherv
+	 * displs : where we put the data
+	 * MPI_Allgatherv : It is for broadcastint all the leaders it have to 
+	 * all other nodes.
+	 */
+	int *recvcnts = (int *) malloc( sizeof(int) * size );
+	for( i=0; i < size; i++)
+        	recvcnts[i] = node_vert ;
+        	recvcnts[size-1] = last_node_vert;
+        int *displs = (int *) malloc ( sizeof(int) * size);
+	for( i=1,displs[0] = 0; i<size; i++)
+        	displs[i] = displs[i-1] + node_vert;
+
+	if( myrank == size-1 ){
+		Num_of_leaders = find_leaders( Leaders, Bcast_leaders, last_node_vert, Base);
+	
+		/* for(i=0; i<last_node_vert ; i++)
+		{
+			printf("%d %d\n", Leaders[i], Bcast_leaders[i]);
+		} */
+		MPI_Allgatherv( Bcast_leaders, last_node_vert, MPI_INT, Total_Leaders, recvcnts, displs, MPI_INT, MPI_COMM_WORLD);  
+	
+		free(recvcnts);
+		free(displs);
+
+		printf( "\n==================================================================\n");
+		printf("All Leaders \n");
+		for( i=0 ; i<V; i++)
+		{	
+                	printf("%d ", Total_Leaders[i]);
+		}
+		printf( "\n==================================================================\n After contraction Edges list : \n");
+	}
+
+	else{
+		Num_of_leaders = find_leaders( Leaders, Bcast_leaders, node_vert, Base);
+		MPI_Allgatherv( Bcast_leaders, node_vert, MPI_INT, Total_Leaders, recvcnts, displs, MPI_INT, MPI_COMM_WORLD);
+
+	}
 	MPI_Barrier ( MPI_COMM_WORLD );
 	//printf("All should reach Barrier here\n");
 
@@ -183,7 +214,7 @@ while ( edges_Next_iter )
 	 * This will print Alltocounts of every node means How many edges has been contracted and whom to sent.
 	 */
 	int j;
-	
+	/*
 	for( j=0; j< size; j++ ){
 		MPI_Barrier(MPI_COMM_WORLD);
 		if( myrank == j )
@@ -198,7 +229,7 @@ while ( edges_Next_iter )
 		printf("\n at process %d :", myrank + 1);	
 		}
 	}
-	
+	*/
 	/*
 	 * Alltoall_count : This will collect number of edges from every node ( Means the vertex belongs to This node
 	 * has been contracted some where else ) 
@@ -211,7 +242,7 @@ while ( edges_Next_iter )
 	 /*
          * This will print Alltoall_count  of every node (Means how many edges each node is sent to this node)
          */
-	
+	/*
         for( j=0; j< size; j++ ){
                 MPI_Barrier(MPI_COMM_WORLD);
                 if( myrank == j )
@@ -226,7 +257,7 @@ while ( edges_Next_iter )
                 printf("\n at process %d :", myrank + 1);
                 }
         }
-	
+	*/
 	/*
 	 * sdispls : sending offsets to other nodes
 	 * rdispls : Recveing offset form other nodes
@@ -269,7 +300,7 @@ while ( edges_Next_iter )
 	/*
 	 * printing All the contracted edges 
 	 */
-	
+	/*
 	for( j=0; j< size; j++ ){
                 MPI_Barrier(MPI_COMM_WORLD);
                 if( myrank == j )
@@ -281,7 +312,7 @@ while ( edges_Next_iter )
                 printf("\n");
                 }
         }
-	
+	*/
 	/*
 	 * MPI_Alltoallv will get all the data that belongs to respective nodes. so that it will mark as a contracted vertex.
 	 */
@@ -292,7 +323,7 @@ while ( edges_Next_iter )
 	/*
 	 * After setup_leader_contraction checking what are edges are being contracted.
 	 */
-	
+	/*
   	for( j=0; j< size; j++ ){
                 MPI_Barrier(MPI_COMM_WORLD);
                 if( myrank == j )
@@ -314,14 +345,14 @@ while ( edges_Next_iter )
 		printf("\n");
                 }
         }
-	
+	*/
 	MPI_Barrier(MPI_COMM_WORLD);
-	int *recvcnts = (int *) malloc( sizeof(int) * size );
+	recvcnts = (int *) malloc( sizeof(int) * size );
         last_node_size = ne/size + ne % size, node_size = ne/size, last_node_vert = V/size + V % size, node_vert = V/size;
 	for( i=0; i < size; i++)
                 recvcnts[i] = node_vert ;
                 recvcnts[size-1] = last_node_vert;
-        int *displs = (int *) malloc ( sizeof(int) * size);
+        displs = (int *) malloc ( sizeof(int) * size);
         for( i=1,displs[0] = 0; i<size; i++)
                 displs[i] = displs[i-1] + node_vert;
 	int *Total_Clist = (int *) malloc( sizeof(int) * V);
@@ -330,7 +361,7 @@ while ( edges_Next_iter )
 		node_vert = last_node_vert;
 		node_size = last_node_size;
 	}
-	
+	/*
 	for( j=0; j< size; j++)
         {
                 MPI_Barrier( MPI_COMM_WORLD );
@@ -345,10 +376,10 @@ while ( edges_Next_iter )
                 }
 
         }
-	
+	*/
 	MPI_Barrier(MPI_COMM_WORLD);
 	MPI_Allgatherv( Nodes, node_vert, MPI_INT, Total_Clist, recvcnts, displs, MPI_INT, MPI_COMM_WORLD);
-	
+	/*
 	for( j=size-1; j>=0; j--)
 	{
 		MPI_Barrier( MPI_COMM_WORLD );
@@ -360,13 +391,13 @@ while ( edges_Next_iter )
         	        }
 			for( i=0; i< V; i++ )
 			{
-				printf("%d-%d: ",i, Total_Clist[i] );
+				printf("%d ", Total_Clist[i] );
 			}
 			printf("\n");
 		}
 
 	}
-	
+	*/
 	//relink_edges( node_size, Total_Clist, Data );
  	for( j=0; j< size; j++ ){
                 MPI_Barrier(MPI_COMM_WORLD);
@@ -384,7 +415,7 @@ while ( edges_Next_iter )
 		MPI_Barrier(MPI_COMM_WORLD);
 		if(myrank == j)
 		{
-			edges_Left = relink_edges( node_size, Total_Clist, Data );
+			relink_edges( node_size, Total_Clist, Data );
 		}
 	}
 	for( j=0; j< size; j++ ){
@@ -397,83 +428,16 @@ while ( edges_Next_iter )
 			}
 		}
         }
-	for(j=0; j< size; j++)
-        {
-                MPI_Barrier(MPI_COMM_WORLD);
-                if(myrank == j)
-                {
-                	printf("%d \n", edges_Left);
-		}
-        }
 
-	MPI_Allreduce( &edges_Left, &edges_Next_iter, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
-
-	free(Alltocounts);
-	free(AlltoData);
-	free(Alltoall_count);
-	free(sdispls);
-	free(rdispls);
-	free(Alltoall_data);
-	free(recvcnts);
-	free(displs);
-	free(Total_Clist);
-	sample --;
-}
 	MPI_Finalize();
 	return 0;
-}
-void Broadcast_Leaders(int myrank, int size, int node_vert, int last_node_vert, int *Nodes, int *Bcast_leaders, int *Total_Leaders, int Base)
-{
-	  /*
-         * recvcnts : It is recv_counts while doing Allgatherv
-         * displs : where we put the data
-         * MPI_Allgatherv : It is for broadcastint all the leaders it have to 
-         * all other nodes.
-         */
-
-	int Num_of_leaders, i=0;
-	int *recvcnts = (int *) malloc( sizeof(int) * size );
-        for( i=0; i < size; i++)
-                recvcnts[i] = node_vert ;
-                recvcnts[size-1] = last_node_vert;
-        int *displs = (int *) malloc ( sizeof(int) * size);
-        for( i=1,displs[0] = 0; i<size; i++)
-                displs[i] = displs[i-1] + node_vert;
-	
-	 if( myrank == size-1 ){
-                Num_of_leaders = find_leaders( Nodes, Bcast_leaders, last_node_vert, Base);
-
-                /* for(i=0; i<last_node_vert ; i++)
-                {
-                        printf("%d %d\n", Nodes[i], Bcast_leaders[i]);
-                } */
-                MPI_Allgatherv( Bcast_leaders, last_node_vert, MPI_INT, Total_Leaders, recvcnts, displs, MPI_INT, MPI_COMM_WORLD);
-
-
-                printf( "\n==================================================================\n");
-                printf("All Leaders \n");
-                for( i=0 ; i<V; i++)
-                {
-                        printf("%d ", Total_Leaders[i]);
-                }
-                printf( "\n==================================================================\n After contraction Edges list : \n");
-        }
-
-        else{
-                Num_of_leaders = find_leaders( Nodes, Bcast_leaders, node_vert, Base);
-                MPI_Allgatherv( Bcast_leaders, node_vert, MPI_INT, Total_Leaders, recvcnts, displs, MPI_INT, MPI_COMM_WORLD);
-
-        }
-	free(recvcnts);
-	free(displs);
 }
 /*
  * re allocate edges
  */
-unsigned int relink_edges( int node_size, int *Total_Clist, int *Data)
+void relink_edges( int node_size, int *Total_Clist, int *Data)
 {
 	int i, node;
-       	unsigned int count=0;
         for( i=0 ; i<node_size * ts; i += ts)
         {
                 if(!Data[ i+2 ])
@@ -512,11 +476,8 @@ unsigned int relink_edges( int node_size, int *Total_Clist, int *Data)
                         }
                 }
 		if( !Data[ i + 2 ])
-		{	count += 1;
 			printf("%d %d\n", Data[i], Data[i+1] );
-		}
         }
-	return count;
 }
 
 /*
@@ -557,21 +518,20 @@ void find_cummulative_displs( int size, int *Alltocounts, int *sdispls)
  * I am taking every node and genearating random probability if that probablity is
  * greater than our desired probablity then it will consider that node has LEADER
  */
-int find_leaders( int *Nodes, int *Bcast_leaders, int node_vert, int Base)
+int find_leaders( int *Leaders, int *Bcast_leaders, int node_vert, int Base)
 {
 	int i, count = 0, rand_value;
-	srand( getpid() + CURRENT_ITERATE );
+	srand( getpid() );
 	for( i = 0; i< node_vert; i++){
 		rand_value = (int)rand()  % 100;
 		float rand_prob = (float) rand_value/100;
-		if( rand_prob >= Prob && Nodes[i] == -1 ){
+		if( rand_prob >= Prob && Leaders[i] ){
 			Bcast_leaders[i] = Base + i;
 			count += 1;
 		}
 		else
 			Bcast_leaders[i] = 0;
 	}
-	CURRENT_ITERATE += 1;
 	return count;
 }
 /*
