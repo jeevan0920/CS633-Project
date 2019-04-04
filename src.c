@@ -6,9 +6,14 @@
 #include <time.h>
 
 #define Prob 0.5
-#define V 17
-#define ne 25
 #define ts 3
+
+//global variables 
+int V; //to hold number of vertices
+int ne; //to hold number of edges
+
+
+
 int CURRENT_ITERATE = 1;
 int find_leaders( int *leaders, int *Bcast_leaders, int node_vert , int Base);
 int find_contract_edges( int size, int node_vert, int *Data, int node_size, int *Alltocounts, int *Total_Leaders );
@@ -20,6 +25,24 @@ void Broadcast_Leaders(int myrank, int size, int node_vert, int last_node_vert, 
 
 int main( int argc, char *argv[])
 {
+
+	if(argc != 4){
+		printf("Invalid arguments\n");
+		printf("Usage : executable path_to_dataset  num_edges num_vertices\n");
+		return -1;
+	}	
+
+	int num_verts = atoi(argv[3]); //number of vertices
+	int num_edges = atoi(argv[2]); //number of edges
+	char *file_path = argv[1]; //path to input data set
+	int filesize = num_edges*3*sizeof(int); //file size in bytes
+	int num_ints ;//number of integers to be read by process
+
+
+	V = num_verts;
+	ne = num_edges;
+
+	/*	
 	int D[ne][ts] = {
 		14,12,0,
 		7,11,0,
@@ -47,13 +70,33 @@ int main( int argc, char *argv[])
 		9,16,0,
 		7,9,0,
 	};
+	*/
+
+
 
 	int myrank, size, i;
 	MPI_Status status;
 	MPI_Init( &argc, &argv);
 	MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
 	MPI_Comm_size(MPI_COMM_WORLD, &size);
+
+	//============================================= parallel io reading ============================================
+
+	//for handling parallel IO read
+	MPI_File fh;
+        MPI_Offset offset;
 	
+	MPI_File_open(MPI_COMM_WORLD,file_path,MPI_MODE_RDONLY,MPI_INFO_NULL,&fh);
+	
+	//calculating number of integers to be read by each process
+	num_ints = 3*( num_edges / size);
+	//assign remaining integers to last process
+	if(myrank == size-1){
+        	num_ints  = num_ints + 3*(num_edges % size);
+	}
+	
+	
+
 	int last_node_size = ne/size + ne % size, node_size = ne/size, last_node_vert = V/size + V % size, node_vert = V/size;
 	/*
 	 * last_node_size Number of edges at (n-1) th node
@@ -70,21 +113,17 @@ int main( int argc, char *argv[])
 	else{
 		Data = (int *) malloc( sizeof(int) * node_size * ts );
 	}
+
+	/*
 	if(myrank == 0){
 		
 		int *sendcnts = (int *) malloc( sizeof(int) * size );
 		for( i=0; i<size; i++)
 			sendcnts[i] = node_size * ts ;
 			sendcnts[size-1] = last_node_size * ts ;
-		/*for ( i=0 ; i<size; i++)
-			printf("%d ", sendcnts[i]);
-		*/		
 		int *displs = (int *) malloc ( sizeof(int) * size);
 		for( i=1,displs[0] = 0; i<size; i++)
 			displs[i] = displs[i-1] + node_size * ts;
-		/*for ( i=0 ; i<size; i++)
-                        printf("%d ", displs[i]);
-		*/
 		MPI_Scatterv( D, sendcnts, displs, MPI_INT, Data, node_size * ts, MPI_INT, myrank , MPI_COMM_WORLD ); 
 
 		free(sendcnts);
@@ -96,7 +135,31 @@ int main( int argc, char *argv[])
 		else
 			MPI_Scatterv( NULL, NULL, NULL, MPI_INT, Data, node_size * ts , MPI_INT, 0 , MPI_COMM_WORLD );
 	}
+	*/
+
+	//calculating offset to read from the file for current process
+	offset = (num_edges/size)*3*sizeof(int)*myrank;
+
+        //printf("## process %d offset is %lld \n",myrank,offset);
+	//printf("## process %d number of integers assigned is %d\n",myrank,num_ints);
 	
+	//parallel reading from  file from differnt offsets from each process
+        MPI_File_read_at(fh,offset,Data,num_ints,MPI_INT, &status);
+	
+	//printing the data read from each process
+	//for(int i=0;i<num_ints;i += 3)
+        //        printf("process %d read %d %d %d \n",myrank,Data[i],Data[i+1],Data[i+2]);
+
+
+	//closing the file 
+	MPI_File_close(&fh);
+
+	//=============================   end of parallel io reading   ===========================================================	
+	
+	
+
+		
+
 	// print all the edges at every node
 	
 	if( myrank == 0 ){
