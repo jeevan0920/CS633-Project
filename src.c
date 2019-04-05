@@ -102,9 +102,9 @@ int main( int argc, char *argv[])
 	 * last_node_size Number of edges at (n-1) th node
 	 * Data is a int pointer that will hold all the edges list for
 	 * the particular node.
-	 * MPI_Scatterv will done at 0th node process that means.. 0th
+	 * MPI_Scatterv will be done at 0th node process that means.. 0th
 	 * node will read all the data from the file and scatterv to all
-	 * th nodes.
+	 * the nodes.
 	 */
 	int *Data;
 	if ( myrank == size-1 ){
@@ -180,8 +180,7 @@ int main( int argc, char *argv[])
 
         }
 	/*
-	 * Nodes  : This will tells that parent of the node with respect to 
-	 * 		this node
+	 * Nodes  : Contains the leader for each vertex
 	 * Leaders : This will contain leaders list till now
 	 * Bcast_leaders : This will be broadcasted to all other nodes.
 	 * Num_of_leaders : Num_of_leaders is selected num of leaders;
