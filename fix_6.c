@@ -162,6 +162,23 @@ int main( int argc, char *argv[])
 
 	// print all the edges at every node
 	
+	if( myrank == 0 ){
+		for( i=0; i<node_size * ts ; i += ts) 
+			printf("%d %d\n", Data[i], Data[i+1]);	
+			//printf("%d %d %d\n", Data[i], Data[i+1], Data[i+2] );
+	}
+	  if( myrank == 1 ){
+                for( i=0; i<node_size  * ts; i += ts)
+			printf("%d %d\n", Data[i], Data[i+1]);                        
+			//printf("%d %d %d\n", Data[i], Data[i+1], Data[i+2] );
+
+        }
+  	if( myrank == 2 ){
+                for( i=0; i<last_node_size * ts; i += ts)
+			printf("%d %d\n", Data[i], Data[i+1]);
+                        //printf("%d %d %d\n", Data[i], Data[i+1], Data[i+2] );
+
+        }
 	/*
 	 * Nodes  : Contains the leader for each vertex
 	 * Leaders : This will contain leaders list till now
@@ -193,7 +210,7 @@ int main( int argc, char *argv[])
 	int Num_of_leaders;
 	int *Total_Leaders;
 	Total_Leaders = (int *) malloc( sizeof(int) * V );
-	int sample = 0;
+	int sample = 4;
 while ( edges_Next_iter )	
 {
 	last_node_size = ne/size + ne % size, node_size = ne/size, last_node_vert = V/size + V % size, node_vert = V/size;
@@ -228,7 +245,7 @@ while ( edges_Next_iter )
 	 * This will print Alltocounts of every node means How many edges has been contracted and whom to sent.
 	 */
 	int j;
-	/*	
+	
 	for( j=0; j< size; j++ ){
 		MPI_Barrier(MPI_COMM_WORLD);
 		if( myrank == j )
@@ -243,7 +260,7 @@ while ( edges_Next_iter )
 		printf("\n at process %d :", myrank + 1);	
 		}
 	}
-	*/
+	
 	/*
 	 * Alltoall_count : This will collect number of edges from every node ( Means the vertex belongs to This node
 	 * has been contracted some where else ) 
@@ -256,7 +273,7 @@ while ( edges_Next_iter )
 	 /*
          * This will print Alltoall_count  of every node (Means how many edges each node is sent to this node)
          */
-	/*
+	
         for( j=0; j< size; j++ ){
                 MPI_Barrier(MPI_COMM_WORLD);
                 if( myrank == j )
@@ -271,7 +288,7 @@ while ( edges_Next_iter )
                 printf("\n at process %d :", myrank + 1);
                 }
         }
-	*/
+	
 	/*
 	 * sdispls : sending offsets to other nodes
 	 * rdispls : Recveing offset form other nodes
@@ -314,7 +331,7 @@ while ( edges_Next_iter )
 	/*
 	 * printing All the contracted edges 
 	 */
-	/*
+	
 	for( j=0; j< size; j++ ){
                 MPI_Barrier(MPI_COMM_WORLD);
                 if( myrank == j )
@@ -326,7 +343,7 @@ while ( edges_Next_iter )
                 printf("\n");
                 }
         }
-	*/
+	
 	/*
 	 * MPI_Alltoallv will get all the data that belongs to respective nodes. so that it will mark as a contracted vertex.
 	 */
@@ -337,7 +354,7 @@ while ( edges_Next_iter )
 	/*
 	 * After setup_leader_contraction checking what are edges are being contracted.
 	 */
-	/*
+	
   	for( j=0; j< size; j++ ){
                 MPI_Barrier(MPI_COMM_WORLD);
                 if( myrank == j )
@@ -359,7 +376,7 @@ while ( edges_Next_iter )
 		printf("\n");
                 }
         }
-	*/
+	
 	MPI_Barrier(MPI_COMM_WORLD);
 	int *recvcnts = (int *) malloc( sizeof(int) * size );
         last_node_size = ne/size + ne % size, node_size = ne/size, last_node_vert = V/size + V % size, node_vert = V/size;
@@ -375,7 +392,7 @@ while ( edges_Next_iter )
 		node_vert = last_node_vert;
 		node_size = last_node_size;
 	}
-	/*
+	
 	for( j=0; j< size; j++)
         {
                 MPI_Barrier( MPI_COMM_WORLD );
@@ -390,10 +407,10 @@ while ( edges_Next_iter )
                 }
 
         }
-	*/
+	
 	MPI_Barrier(MPI_COMM_WORLD);
 	MPI_Allgatherv( Nodes, node_vert, MPI_INT, Total_Clist, recvcnts, displs, MPI_INT, MPI_COMM_WORLD);
-	/*	
+	
 	for( j=size-1; j>=0; j--)
 	{
 		MPI_Barrier( MPI_COMM_WORLD );
@@ -411,7 +428,7 @@ while ( edges_Next_iter )
 		}
 
 	}
-	*/
+	
 	//relink_edges( node_size, Total_Clist, Data );
  	for( j=0; j< size; j++ ){
                 MPI_Barrier(MPI_COMM_WORLD);
@@ -462,9 +479,8 @@ while ( edges_Next_iter )
 	free(recvcnts);
 	free(displs);
 	free(Total_Clist);
-	sample ++;
+	sample --;
 }
-	printf(" NO of Rounds:%d \n",sample);
 	MPI_Finalize();
 	return 0;
 }
