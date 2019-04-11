@@ -162,6 +162,7 @@ int main( int argc, char *argv[])
 
 	// print all the edges at every node
 	
+	
 	/*
 	 * Nodes  : Contains the leader for each vertex
 	 * Leaders : This will contain leaders list till now
@@ -256,7 +257,7 @@ while ( edges_Next_iter )
 	 /*
          * This will print Alltoall_count  of every node (Means how many edges each node is sent to this node)
          */
-	/*
+	/*	
         for( j=0; j< size; j++ ){
                 MPI_Barrier(MPI_COMM_WORLD);
                 if( myrank == j )
@@ -271,7 +272,7 @@ while ( edges_Next_iter )
                 printf("\n at process %d :", myrank + 1);
                 }
         }
-	*/
+	*/	
 	/*
 	 * sdispls : sending offsets to other nodes
 	 * rdispls : Recveing offset form other nodes
@@ -314,7 +315,7 @@ while ( edges_Next_iter )
 	/*
 	 * printing All the contracted edges 
 	 */
-	/*
+	/*	
 	for( j=0; j< size; j++ ){
                 MPI_Barrier(MPI_COMM_WORLD);
                 if( myrank == j )
@@ -337,7 +338,7 @@ while ( edges_Next_iter )
 	/*
 	 * After setup_leader_contraction checking what are edges are being contracted.
 	 */
-	/*
+	/*	
   	for( j=0; j< size; j++ ){
                 MPI_Barrier(MPI_COMM_WORLD);
                 if( myrank == j )
@@ -375,7 +376,7 @@ while ( edges_Next_iter )
 		node_vert = last_node_vert;
 		node_size = last_node_size;
 	}
-	/*
+	/*	
 	for( j=0; j< size; j++)
         {
                 MPI_Barrier( MPI_COMM_WORLD );
@@ -390,7 +391,7 @@ while ( edges_Next_iter )
                 }
 
         }
-	*/
+	*/	
 	MPI_Barrier(MPI_COMM_WORLD);
 	MPI_Allgatherv( Nodes, node_vert, MPI_INT, Total_Clist, recvcnts, displs, MPI_INT, MPI_COMM_WORLD);
 	/*	
@@ -442,6 +443,7 @@ while ( edges_Next_iter )
 			}
 		}
         }
+	/*
 	for(j=0; j< size; j++)
         {
                 MPI_Barrier(MPI_COMM_WORLD);
@@ -450,7 +452,7 @@ while ( edges_Next_iter )
                 	printf("%d \n", edges_Left);
 		}
         }
-
+	*/
 	MPI_Allreduce( &edges_Left, &edges_Next_iter, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
 
 	free(Alltocounts);
@@ -463,8 +465,9 @@ while ( edges_Next_iter )
 	free(displs);
 	free(Total_Clist);
 	sample ++;
+	if(myrank==0)
+	printf(" Round %d is Completed \n",sample);
 }
-	printf(" NO of Rounds:%d \n",sample);
 	MPI_Finalize();
 	return 0;
 }
@@ -495,7 +498,7 @@ void Broadcast_Leaders(int myrank, int size, int node_vert, int last_node_vert, 
                 } */
                 MPI_Allgatherv( Bcast_leaders, last_node_vert, MPI_INT, Total_Leaders, recvcnts, displs, MPI_INT, MPI_COMM_WORLD);
 
-
+		/*
                 printf( "\n==================================================================\n");
                 printf("All Leaders \n");
                 for( i=0 ; i<V; i++)
@@ -503,6 +506,7 @@ void Broadcast_Leaders(int myrank, int size, int node_vert, int last_node_vert, 
                         printf("%d ", Total_Leaders[i]);
                 }
                 printf( "\n==================================================================\n After contraction Edges list : \n");
+		*/
         }
 
         else{
@@ -559,7 +563,7 @@ unsigned int relink_edges( int node_size, int *Total_Clist, int *Data)
                 }
 		if( !Data[ i + 2 ])
 		{	count += 1;
-			printf("%d %d\n", Data[i], Data[i+1] );
+			//printf("%d %d\n", Data[i], Data[i+1] );
 		}
         }
 	return count;
