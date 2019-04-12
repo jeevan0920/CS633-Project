@@ -42,6 +42,37 @@ int main( int argc, char *argv[])
 	V = num_verts;
 	ne = num_edges;
 
+	/*	
+	int D[ne][ts] = {
+		14,12,0,
+		7,11,0,
+		1,12,0,
+		9,11,0,
+		14,5,0,
+		2,4,0,
+		6,10,0,
+		8,3,0,
+		4,13,0,
+		15,16,0,
+		5,6,0,
+		13,16,0,
+		12,3,0,
+		11,15,0,
+		8,10,0,
+		2,7,0,
+		14,1,0,
+		2,15,0,
+		6,8,0,
+		4,9,0,
+		5,3,0,
+		1,3,0,
+		9,15,0,
+		9,16,0,
+		7,9,0,
+	};
+	*/
+
+
 
 	int myrank, size, i;
 	MPI_Status status;
@@ -83,6 +114,28 @@ int main( int argc, char *argv[])
 		Data = (int *) malloc( sizeof(int) * node_size * ts );
 	}
 
+	/*
+	if(myrank == 0){
+		
+		int *sendcnts = (int *) malloc( sizeof(int) * size );
+		for( i=0; i<size; i++)
+			sendcnts[i] = node_size * ts ;
+			sendcnts[size-1] = last_node_size * ts ;
+		int *displs = (int *) malloc ( sizeof(int) * size);
+		for( i=1,displs[0] = 0; i<size; i++)
+			displs[i] = displs[i-1] + node_size * ts;
+		MPI_Scatterv( D, sendcnts, displs, MPI_INT, Data, node_size * ts, MPI_INT, myrank , MPI_COMM_WORLD ); 
+
+		free(sendcnts);
+		free(displs);
+	}
+	else{
+		if( myrank == size-1 )
+			MPI_Scatterv( NULL, NULL, NULL, MPI_INT, Data, last_node_size * ts , MPI_INT, 0 , MPI_COMM_WORLD );
+		else
+			MPI_Scatterv( NULL, NULL, NULL, MPI_INT, Data, node_size * ts , MPI_INT, 0 , MPI_COMM_WORLD );
+	}
+	*/
 
 	//calculating offset to read from the file for current process
 	offset = (num_edges/size)*3*sizeof(int)*myrank;
@@ -102,6 +155,13 @@ int main( int argc, char *argv[])
 	MPI_File_close(&fh);
 
 	//=============================   end of parallel io reading   ===========================================================	
+	
+	
+
+		
+
+	// print all the edges at every node
+	
 	
 	/*
 	 * Nodes  : Contains the leader for each vertex
@@ -130,11 +190,7 @@ int main( int argc, char *argv[])
 			Leaders[i] = -1;
 		}
         }
-	int *Vertex_Color;
-	if( myrank == 0)
-	{
-		Vertex_Color = (int *) malloc(sizeof(int) * V );
-	}
+	
 	int Num_of_leaders;
 	int *Total_Leaders;
 	Total_Leaders = (int *) malloc( sizeof(int) * V );
@@ -415,31 +471,7 @@ while ( edges_Next_iter )
 	sample ++;
 	if(myrank==0)
 	printf(" Round %d is Completed \n",sample);
-
-	if(edges_Left == 0)
-	{
-		if(myrank == 0)
-		{
-                     	   	for( i=0; i< V; i++ )
-                        	{
-                                	//printf("%d-%d: ",i, Total_Clist[i] );
-					j = i;
-					while( Total_Clist[j] != -1 ) 
-					{
-						j= Total_Clist[j];
-					}
-					Vertex_Color[i] = j;
-                        	}
-	        }
-	}
 }
-	if(myrank == 0)
-	{	printf("Vertex\tColor\n");
-		for(i=0; i<V; i++)
-		{
-			printf("%d\t%d\n",i, Vertex_Color[i]);
-		}
-	}
 	MPI_Finalize();
 	return 0;
 }
