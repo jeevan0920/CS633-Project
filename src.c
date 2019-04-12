@@ -402,6 +402,24 @@ while ( edges_Next_iter )
         }
 	*/
 	MPI_Allreduce( &edges_Left, &edges_Next_iter, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+	
+	 if(edges_Left == 0)
+        {
+                if(myrank == 0)
+                {
+                                for( i=0; i< V; i++ )
+                                {
+                                        //printf("%d-%d: ",i, Total_Clist[i] );
+                                        j = i;
+                                        while( Total_Clist[j] != -1 )
+                                        {
+                                                j= Total_Clist[j];
+                                        }
+                                        Vertex_Color[i] = j;
+                                }
+                }
+        }
+
 
 	free(Alltocounts);
 	free(AlltoData);
@@ -413,28 +431,13 @@ while ( edges_Next_iter )
 	free(displs);
 	free(Total_Clist);
 	sample ++;
-	if(myrank==0)
-	printf(" Round %d is Completed \n",sample);
-
-	if(edges_Left == 0)
+	if(myrank == 0)
 	{
-		if(myrank == 0)
-		{
-                     	   	for( i=0; i< V; i++ )
-                        	{
-                                	//printf("%d-%d: ",i, Total_Clist[i] );
-					j = i;
-					while( Total_Clist[j] != -1 ) 
-					{
-						j= Total_Clist[j];
-					}
-					Vertex_Color[i] = j;
-                        	}
-	        }
+		printf(" Round %d is Completed \n",sample);
 	}
 }
 	if(myrank == 0)
-	{	printf("Vertex\tColor\n");
+	{
 		for(i=0; i<V; i++)
 		{
 			printf("%d\t%d\n",i, Vertex_Color[i]);
