@@ -291,6 +291,7 @@ while ( edges_Next_iter )
 	/*
 	 * Printing sdispls, rdispls here to check
 	 */
+	/*
 	for( j=0; j< size; j++ ){
                 MPI_Barrier(MPI_COMM_WORLD);
                 if( myrank == j )
@@ -300,7 +301,8 @@ while ( edges_Next_iter )
                // printf("\n");
                 }
         }
-	MPI_Barrier(MPI_COMM_WORLD);
+	*/
+//	MPI_Barrier(MPI_COMM_WORLD);
 
 	/*
 	 * Alltocounts , Alltoall_count should be interms of how many MPI_INTEGERS
@@ -361,7 +363,7 @@ while ( edges_Next_iter )
                 }
         }
 	*/
-	MPI_Barrier(MPI_COMM_WORLD);
+//	MPI_Barrier(MPI_COMM_WORLD);
 	int *recvcnts = (int *) malloc( sizeof(int) * size );
         last_node_size = ne/size + ne % size, node_size = ne/size, last_node_vert = V/size + V % size, node_vert = V/size;
 	for( i=0; i < size; i++)
@@ -392,7 +394,7 @@ while ( edges_Next_iter )
 
         }
 	*/	
-	MPI_Barrier(MPI_COMM_WORLD);
+//	MPI_Barrier(MPI_COMM_WORLD);
 	MPI_Allgatherv( Nodes, node_vert, MPI_INT, Total_Clist, recvcnts, displs, MPI_INT, MPI_COMM_WORLD);
 	/*	
 	for( j=size-1; j>=0; j--)
@@ -414,7 +416,8 @@ while ( edges_Next_iter )
 	}
 	*/
 	//relink_edges( node_size, Total_Clist, Data );
- 	for( j=0; j< size; j++ ){
+ 	/*
+	for( j=0; j< size; j++ ){
                 MPI_Barrier(MPI_COMM_WORLD);
                 if(myrank == j)
                 {
@@ -424,17 +427,17 @@ while ( edges_Next_iter )
                         }
                 }
         }
-	MPI_Barrier( MPI_COMM_WORLD);
+	*/
+//	MPI_Barrier( MPI_COMM_WORLD);
 	for(j=0; j< size; j++)
 	{
-		MPI_Barrier(MPI_COMM_WORLD);
 		if(myrank == j)
 		{
 			edges_Left = relink_edges( node_size, Total_Clist, Data );
 		}
 	}
+	/*
 	for( j=0; j< size; j++ ){
-                MPI_Barrier(MPI_COMM_WORLD);
 		if(myrank == j)
 		{
 			for( i=0; i<node_size * ts; i += ts)
@@ -443,6 +446,7 @@ while ( edges_Next_iter )
 			}
 		}
         }
+	*/
 	/*
 	for(j=0; j< size; j++)
         {
