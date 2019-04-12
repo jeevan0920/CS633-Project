@@ -1,5 +1,13 @@
 #!/bin/sh
-#to setup tau in jeevan's account
+#to setup tau in jeevan's account 
+
+if [ $# -ne 4 ]
+then 
+	echo "given #arguments : "$#" , expected #arguments : 5"
+	echo "Usage :: script_name np dataset #edges #vertices"
+	exit
+fi
+
 
 source ~/.bashrc
 
@@ -19,5 +27,9 @@ export PATH=`pwd`/parmetis/bin:`pwd`/../mar29/Mar29/tau/bin:$PATH
 
 #number of processes
 np=$1
+datasetPath=$2
+edges=$3
+verts=$4
 
-time mpiexec -n $np -f hostfile ./a.out ./big_graph_dataset 13233 6474
+
+time mpiexec -n $np -f hostfile ./a.out $datasetPath  $edges $verts
