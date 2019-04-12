@@ -3,11 +3,21 @@
 
 source ~/.bashrc
 
+#remove all the profile files
+rm profile*
+
 #setting up tau
 export TAU_OPTIONS='-optVerbose -optRevert'
 export TAU_MAKEFILE=`pwd`/../mar29/Mar29/tau/lib/Makefile.tau-mpi-pdt
-../mar29/Mar29/tau/bin/tau_cc.sh
+
+#compile with tau
+../mar29/Mar29/tau/bin/tau_cc.sh src.c
+
+#set the path for tau
 export PATH=`pwd`/parmetis/bin:`pwd`/../mar29/Mar29/tau/bin:$PATH
 
 
-time mpiexec -n 10 -f hostfile ./a.out ./datasets/big_graph_slash_dot 516575 77357
+#number of processes
+np=$1
+
+time mpiexec -n $np -f hostfile ./a.out ./big_graph_dataset 13233 6474

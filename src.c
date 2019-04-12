@@ -145,7 +145,7 @@ while ( edges_Next_iter )
 	Broadcast_Leaders(myrank, size, node_vert, last_node_vert, Nodes, Bcast_leaders, Total_Leaders, Base);
 	
 
-	MPI_Barrier ( MPI_COMM_WORLD );
+	//MPI_Barrier ( MPI_COMM_WORLD );
 	//printf("All should reach Barrier here\n");
 
 	/*
