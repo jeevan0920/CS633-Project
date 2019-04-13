@@ -1,0 +1,24 @@
+FUNCTION SUMMARY (mean):
+---------------------------------------------------------------------------------------
+%Time    Exclusive    Inclusive       #Call      #Subrs  Inclusive Name
+              msec   total msec                          usec/call 
+---------------------------------------------------------------------------------------
+100.0      0.00428     3:18.427           1           1  198427653 .TAU application
+100.0        1,195     3:18.427           1         512  198427649 int main(int, char **) C 
+ 69.9     2:18.640     2:18.640          92           0    1506960 MPI_Allgatherv() 
+ 34.3        0.105     1:08.127          46          92    1481039 void Broadcast_Leaders(int, int, int, int, int *, int *, int *, int) C 
+  8.6       17,139       17,139          46           0     372597 MPI_Alltoall() 
+  7.9       15,676       15,676          46           0     340795 MPI_Allreduce() 
+  4.6        9,147        9,147           1           0    9147978 MPI_Finalize() 
+  3.6        7,129        7,129           1           0    7129448 MPI_Init() 
+  2.3        4,498        4,498           1           0    4498379 MPI_File_close()
+  2.1        4,234        4,234          46           0      92064 MPI_Alltoallv() 
+  0.3          551          551           1           0     551960 MPI_File_open()
+  0.0           71           71          46           0       1551 int find_leaders(int *, int *, int, int) C 
+  0.0           52           52          46           0       1144 unsigned int relink_edges(int, int *, int *) C 
+  0.0           44           44          46           0        962 int find_contract_edges(int, int, int *, int, int *, int *) C 
+  0.0           43           43          46           0        939 void find_alltoallv_data(int, int, int *, int, int *, int *, int *) C 
+  0.0            1            1          46           0         35 void setup_leader_contraction(int *, int *, int *, int, int) C 
+  0.0       0.0338       0.0338          92           0          0 void find_cummulative_displs(int, int *, int *) C 
+  0.0     0.000778     0.000778           1           0          1 MPI_Comm_rank() 
+  0.0     0.000417     0.000417           1           0          0 MPI_Comm_size()
