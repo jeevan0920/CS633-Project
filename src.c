@@ -277,7 +277,26 @@ while ( edges_Next_iter )
 	/*
 	 * MPI_Alltoallv will get all the data that belongs to respective nodes. so that it will mark as a contracted vertex.
 	 */
-	MPI_Alltoallv( AlltoData, Alltocounts, sdispls, MPI_INT, Alltoall_data, Alltoall_count, rdispls, MPI_INT, MPI_COMM_WORLD);
+	MPI_Request Recv_request[i], Send_request[i];
+        MPI_Status status;
+        for(i=0; i< size; i++)
+        {
+                MPI_Isend(AlltoData + sdispls[i] , Alltocounts[i], MPI_INT, i, myrank, MPI_COMM_WORLD, Send_request+i);
+        }
+        for(i=0; i<size; i++)
+        {
+                MPI_Irecv(Alltoall_data + rdispls[i] , Alltoall_count[i], MPI_INT, i, i, MPI_COMM_WORLD, Recv_request + i);
+        }
+        for(i=0; i<size;i++)
+        {
+                MPI_Wait(Send_request + i, &status);
+        }
+        for(i=0; i<size; i++)
+        {
+                MPI_Wait(Recv_request + i, &status);
+        }
+
+	//MPI_Alltoallv( AlltoData, Alltocounts, sdispls, MPI_INT, Alltoall_data, Alltoall_count, rdispls, MPI_INT, MPI_COMM_WORLD);
 
 	setup_leader_contraction( Alltoall_count, Alltoall_data, Nodes , Base, size);	
 	

@@ -6,9 +6,14 @@
 #include <time.h>
 
 #define Prob 0.5
-#define V 17
-#define ne 25
 #define ts 3
+
+//global variables 
+int V; //to hold number of vertices
+int ne; //to hold number of edges
+
+
+
 int CURRENT_ITERATE = 1;
 int find_leaders( int *leaders, int *Bcast_leaders, int node_vert , int Base);
 int find_contract_edges( int size, int node_vert, int *Data, int node_size, int *Alltocounts, int *Total_Leaders );
@@ -20,48 +25,55 @@ void Broadcast_Leaders(int myrank, int size, int node_vert, int last_node_vert, 
 
 int main( int argc, char *argv[])
 {
-	int D[ne][ts] = {
-		14,12,0,
-		7,11,0,
-		1,12,0,
-		9,11,0,
-		14,5,0,
-		2,4,0,
-		6,10,0,
-		8,3,0,
-		4,13,0,
-		15,16,0,
-		5,6,0,
-		13,16,0,
-		12,3,0,
-		11,15,0,
-		8,10,0,
-		2,7,0,
-		14,1,0,
-		2,15,0,
-		6,8,0,
-		4,9,0,
-		5,3,0,
-		1,3,0,
-		9,15,0,
-		9,16,0,
-		7,9,0,
-	};
+
+	if(argc != 4){
+		printf("Invalid arguments\n");
+		printf("Usage : executable path_to_dataset  num_edges num_vertices\n");
+		return -1;
+	}	
+
+	int num_verts = atoi(argv[3]); //number of vertices
+	int num_edges = atoi(argv[2]); //number of edges
+	char *file_path = argv[1]; //path to input data set
+	int filesize = num_edges*3*sizeof(int); //file size in bytes
+	int num_ints ;//number of integers to be read by process
+
+
+	V = num_verts;
+	ne = num_edges;
+
 
 	int myrank, size, i;
 	MPI_Status status;
 	MPI_Init( &argc, &argv);
 	MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
 	MPI_Comm_size(MPI_COMM_WORLD, &size);
+
+	//============================================= parallel io reading ============================================
+
+	//for handling parallel IO read
+	MPI_File fh;
+        MPI_Offset offset;
 	
+	MPI_File_open(MPI_COMM_WORLD,file_path,MPI_MODE_RDONLY,MPI_INFO_NULL,&fh);
+	
+	//calculating number of integers to be read by each process
+	num_ints = 3*( num_edges / size);
+	//assign remaining integers to last process
+	if(myrank == size-1){
+        	num_ints  = num_ints + 3*(num_edges % size);
+	}
+	
+	
+
 	int last_node_size = ne/size + ne % size, node_size = ne/size, last_node_vert = V/size + V % size, node_vert = V/size;
 	/*
 	 * last_node_size Number of edges at (n-1) th node
 	 * Data is a int pointer that will hold all the edges list for
 	 * the particular node.
-	 * MPI_Scatterv will done at 0th node process that means.. 0th
+	 * MPI_Scatterv will be done at 0th node process that means.. 0th
 	 * node will read all the data from the file and scatterv to all
-	 * th nodes.
+	 * the nodes.
 	 */
 	int *Data;
 	if ( myrank == size-1 ){
@@ -70,55 +82,29 @@ int main( int argc, char *argv[])
 	else{
 		Data = (int *) malloc( sizeof(int) * node_size * ts );
 	}
-	if(myrank == 0){
-		
-		int *sendcnts = (int *) malloc( sizeof(int) * size );
-		for( i=0; i<size; i++)
-			sendcnts[i] = node_size * ts ;
-			sendcnts[size-1] = last_node_size * ts ;
-		/*for ( i=0 ; i<size; i++)
-			printf("%d ", sendcnts[i]);
-		*/		
-		int *displs = (int *) malloc ( sizeof(int) * size);
-		for( i=1,displs[0] = 0; i<size; i++)
-			displs[i] = displs[i-1] + node_size * ts;
-		/*for ( i=0 ; i<size; i++)
-                        printf("%d ", displs[i]);
-		*/
-		MPI_Scatterv( D, sendcnts, displs, MPI_INT, Data, node_size * ts, MPI_INT, myrank , MPI_COMM_WORLD ); 
 
-		free(sendcnts);
-		free(displs);
-	}
-	else{
-		if( myrank == size-1 )
-			MPI_Scatterv( NULL, NULL, NULL, MPI_INT, Data, last_node_size * ts , MPI_INT, 0 , MPI_COMM_WORLD );
-		else
-			MPI_Scatterv( NULL, NULL, NULL, MPI_INT, Data, node_size * ts , MPI_INT, 0 , MPI_COMM_WORLD );
-	}
+
+	//calculating offset to read from the file for current process
+	offset = (num_edges/size)*3*sizeof(int)*myrank;
+
+        //printf("## process %d offset is %lld \n",myrank,offset);
+	//printf("## process %d number of integers assigned is %d\n",myrank,num_ints);
 	
-	// print all the edges at every node
+	//parallel reading from  file from differnt offsets from each process
+        MPI_File_read_at(fh,offset,Data,num_ints,MPI_INT, &status);
 	
-	if( myrank == 0 ){
-		for( i=0; i<node_size * ts ; i += ts) 
-			printf("%d %d\n", Data[i], Data[i+1]);	
-			//printf("%d %d %d\n", Data[i], Data[i+1], Data[i+2] );
-	}
-	  if( myrank == 1 ){
-                for( i=0; i<node_size  * ts; i += ts)
-			printf("%d %d\n", Data[i], Data[i+1]);                        
-			//printf("%d %d %d\n", Data[i], Data[i+1], Data[i+2] );
+	//printing the data read from each process
+	//for(int i=0;i<num_ints;i += 3)
+        //        printf("process %d read %d %d %d \n",myrank,Data[i],Data[i+1],Data[i+2]);
 
-        }
-  	if( myrank == 2 ){
-                for( i=0; i<last_node_size * ts; i += ts)
-			printf("%d %d\n", Data[i], Data[i+1]);
-                        //printf("%d %d %d\n", Data[i], Data[i+1], Data[i+2] );
 
-        }
+	//closing the file 
+	MPI_File_close(&fh);
+
+	//=============================   end of parallel io reading   ===========================================================	
+	
 	/*
-	 * Nodes  : This will tells that parent of the node with respect to 
-	 * 		this node
+	 * Nodes  : Contains the leader for each vertex
 	 * Leaders : This will contain leaders list till now
 	 * Bcast_leaders : This will be broadcasted to all other nodes.
 	 * Num_of_leaders : Num_of_leaders is selected num of leaders;
@@ -144,11 +130,15 @@ int main( int argc, char *argv[])
 			Leaders[i] = -1;
 		}
         }
-	
+	int *Vertex_Color;
+	if( myrank == 0)
+	{
+		Vertex_Color = (int *) malloc(sizeof(int) * V );
+	}
 	int Num_of_leaders;
 	int *Total_Leaders;
 	Total_Leaders = (int *) malloc( sizeof(int) * V );
-	int sample = 1;
+	int sample = 0;
 while ( edges_Next_iter )	
 {
 	last_node_size = ne/size + ne % size, node_size = ne/size, last_node_vert = V/size + V % size, node_vert = V/size;
@@ -183,7 +173,7 @@ while ( edges_Next_iter )
 	 * This will print Alltocounts of every node means How many edges has been contracted and whom to sent.
 	 */
 	int j;
-	
+	/*	
 	for( j=0; j< size; j++ ){
 		MPI_Barrier(MPI_COMM_WORLD);
 		if( myrank == j )
@@ -198,7 +188,7 @@ while ( edges_Next_iter )
 		printf("\n at process %d :", myrank + 1);	
 		}
 	}
-	
+	*/
 	/*
 	 * Alltoall_count : This will collect number of edges from every node ( Means the vertex belongs to This node
 	 * has been contracted some where else ) 
@@ -211,7 +201,7 @@ while ( edges_Next_iter )
 	 /*
          * This will print Alltoall_count  of every node (Means how many edges each node is sent to this node)
          */
-	
+	/*	
         for( j=0; j< size; j++ ){
                 MPI_Barrier(MPI_COMM_WORLD);
                 if( myrank == j )
@@ -226,7 +216,7 @@ while ( edges_Next_iter )
                 printf("\n at process %d :", myrank + 1);
                 }
         }
-	
+	*/	
 	/*
 	 * sdispls : sending offsets to other nodes
 	 * rdispls : Recveing offset form other nodes
@@ -245,6 +235,7 @@ while ( edges_Next_iter )
 	/*
 	 * Printing sdispls, rdispls here to check
 	 */
+	/*
 	for( j=0; j< size; j++ ){
                 MPI_Barrier(MPI_COMM_WORLD);
                 if( myrank == j )
@@ -254,7 +245,8 @@ while ( edges_Next_iter )
                // printf("\n");
                 }
         }
-	MPI_Barrier(MPI_COMM_WORLD);
+	*/
+//	MPI_Barrier(MPI_COMM_WORLD);
 
 	/*
 	 * Alltocounts , Alltoall_count should be interms of how many MPI_INTEGERS
@@ -269,7 +261,7 @@ while ( edges_Next_iter )
 	/*
 	 * printing All the contracted edges 
 	 */
-	
+	/*	
 	for( j=0; j< size; j++ ){
                 MPI_Barrier(MPI_COMM_WORLD);
                 if( myrank == j )
@@ -281,36 +273,18 @@ while ( edges_Next_iter )
                 printf("\n");
                 }
         }
-	
+	*/
 	/*
 	 * MPI_Alltoallv will get all the data that belongs to respective nodes. so that it will mark as a contracted vertex.
 	 */
-	MPI_Request Recv_request[i], Send_request[i];
-    	MPI_Status status;
-	for(i=0; i< size; i++)
-	{
-		MPI_Isend(AlltoData + sdispls[i] , Alltocounts[i], MPI_INT, i, myrank, MPI_COMM_WORLD, Send_request+i);
-	}
-	for(i=0; i<size; i++)
-	{
-		MPI_Irecv(Alltoall_data + rdispls[i] , Alltoall_count[i], MPI_INT, i, i, MPI_COMM_WORLD, Recv_request + i);
-	}
-	for(i=0; i<size;i++)
-	{
-		MPI_Wait(Send_request + i, &status);
-	}
-	for(i=0; i<size; i++)
-	{
-		MPI_Wait(Recv_request + i, &status);
-	}
-	//	MPI_Alltoallv( AlltoData, Alltocounts, sdispls, MPI_INT, Alltoall_data, Alltoall_count, rdispls, MPI_INT, MPI_COMM_WORLD);
+	MPI_Alltoallv( AlltoData, Alltocounts, sdispls, MPI_INT, Alltoall_data, Alltoall_count, rdispls, MPI_INT, MPI_COMM_WORLD);
 
 	setup_leader_contraction( Alltoall_count, Alltoall_data, Nodes , Base, size);	
 	
 	/*
 	 * After setup_leader_contraction checking what are edges are being contracted.
 	 */
-	
+	/*	
   	for( j=0; j< size; j++ ){
                 MPI_Barrier(MPI_COMM_WORLD);
                 if( myrank == j )
@@ -332,8 +306,8 @@ while ( edges_Next_iter )
 		printf("\n");
                 }
         }
-	
-	MPI_Barrier(MPI_COMM_WORLD);
+	*/
+//	MPI_Barrier(MPI_COMM_WORLD);
 	int *recvcnts = (int *) malloc( sizeof(int) * size );
         last_node_size = ne/size + ne % size, node_size = ne/size, last_node_vert = V/size + V % size, node_vert = V/size;
 	for( i=0; i < size; i++)
@@ -348,7 +322,7 @@ while ( edges_Next_iter )
 		node_vert = last_node_vert;
 		node_size = last_node_size;
 	}
-	
+	/*	
 	for( j=0; j< size; j++)
         {
                 MPI_Barrier( MPI_COMM_WORLD );
@@ -363,10 +337,10 @@ while ( edges_Next_iter )
                 }
 
         }
-	
-	MPI_Barrier(MPI_COMM_WORLD);
+	*/	
+//	MPI_Barrier(MPI_COMM_WORLD);
 	MPI_Allgatherv( Nodes, node_vert, MPI_INT, Total_Clist, recvcnts, displs, MPI_INT, MPI_COMM_WORLD);
-	
+	/*	
 	for( j=size-1; j>=0; j--)
 	{
 		MPI_Barrier( MPI_COMM_WORLD );
@@ -384,9 +358,10 @@ while ( edges_Next_iter )
 		}
 
 	}
-	
+	*/
 	//relink_edges( node_size, Total_Clist, Data );
- 	for( j=0; j< size; j++ ){
+ 	/*
+	for( j=0; j< size; j++ ){
                 MPI_Barrier(MPI_COMM_WORLD);
                 if(myrank == j)
                 {
@@ -396,17 +371,17 @@ while ( edges_Next_iter )
                         }
                 }
         }
-	MPI_Barrier( MPI_COMM_WORLD);
+	*/
+//	MPI_Barrier( MPI_COMM_WORLD);
 	for(j=0; j< size; j++)
 	{
-		MPI_Barrier(MPI_COMM_WORLD);
 		if(myrank == j)
 		{
 			edges_Left = relink_edges( node_size, Total_Clist, Data );
 		}
 	}
+	/*
 	for( j=0; j< size; j++ ){
-                MPI_Barrier(MPI_COMM_WORLD);
 		if(myrank == j)
 		{
 			for( i=0; i<node_size * ts; i += ts)
@@ -415,6 +390,8 @@ while ( edges_Next_iter )
 			}
 		}
         }
+	*/
+	/*
 	for(j=0; j< size; j++)
         {
                 MPI_Barrier(MPI_COMM_WORLD);
@@ -423,8 +400,26 @@ while ( edges_Next_iter )
                 	printf("%d \n", edges_Left);
 		}
         }
-
+	*/
 	MPI_Allreduce( &edges_Left, &edges_Next_iter, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+	
+	 if(edges_Left == 0)
+        {
+                if(myrank == 0)
+                {
+                                for( i=0; i< V; i++ )
+                                {
+                                        //printf("%d-%d: ",i, Total_Clist[i] );
+                                        j = i;
+                                        while( Total_Clist[j] != -1 )
+                                        {
+                                                j= Total_Clist[j];
+                                        }
+                                        Vertex_Color[i] = j;
+                                }
+                }
+        }
+
 
 	free(Alltocounts);
 	free(AlltoData);
@@ -435,8 +430,19 @@ while ( edges_Next_iter )
 	free(recvcnts);
 	free(displs);
 	free(Total_Clist);
-	sample --;
+	sample ++;
+	if(myrank == 0)
+	{
+		printf(" Round %d is Completed \n",sample);
+	}
 }
+	if(myrank == 0)
+	{
+		for(i=0; i<V; i++)
+		{
+			printf("%d\t%d\n",i, Vertex_Color[i]);
+		}
+	}
 	MPI_Finalize();
 	return 0;
 }
@@ -467,7 +473,7 @@ void Broadcast_Leaders(int myrank, int size, int node_vert, int last_node_vert, 
                 } */
                 MPI_Allgatherv( Bcast_leaders, last_node_vert, MPI_INT, Total_Leaders, recvcnts, displs, MPI_INT, MPI_COMM_WORLD);
 
-
+		/*
                 printf( "\n==================================================================\n");
                 printf("All Leaders \n");
                 for( i=0 ; i<V; i++)
@@ -475,6 +481,7 @@ void Broadcast_Leaders(int myrank, int size, int node_vert, int last_node_vert, 
                         printf("%d ", Total_Leaders[i]);
                 }
                 printf( "\n==================================================================\n After contraction Edges list : \n");
+		*/
         }
 
         else{
@@ -531,7 +538,7 @@ unsigned int relink_edges( int node_size, int *Total_Clist, int *Data)
                 }
 		if( !Data[ i + 2 ])
 		{	count += 1;
-			printf("%d %d\n", Data[i], Data[i+1] );
+			//printf("%d %d\n", Data[i], Data[i+1] );
 		}
         }
 	return count;
