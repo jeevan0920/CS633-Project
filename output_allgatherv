@@ -93,3 +93,37 @@ process = 52,ppn=8,temp = 79.3
 process = 56,ppn=8,temp = 74.8
 process = 60,ppn=8,temp = 80.6
 process = 64,ppn=8,temp = 78.0
+running Isend ..
+process = 4,temp = 60.3
+process = 8,temp = 70.4
+process = 12,temp = 70.7
+process = 16,temp = 74.2
+process = 20,temp = 77.4
+process = 24,temp = 78.4
+process = 28,temp = 77.6
+process = 32,temp = 78.1
+process = 36,temp = 76.5
+process = 40,temp = 82.1
+process = 44,temp = 80.4
+process = 48,temp = 77.6
+process = 52,temp = 79.0
+process = 56,temp = 82.5
+process = 60,temp = 78.2
+process = 64,temp = 80.4
+running Isend . with 8 ppn.
+process = 4,ppn=8,temp = 61.9
+process = 8,ppn=8,temp = 65.1
+process = 12,ppn=8,temp = 73.1
+process = 16,ppn=8,temp = 70.9
+process = 20,ppn=8,temp = 72.5
+process = 24,ppn=8,temp = 78.9
+process = 28,ppn=8,temp = 67.1
+process = 32,ppn=8,temp = 71.8
+process = 36,ppn=8,temp = 79.7
+process = 40,ppn=8,temp = 76.6
+process = 44,ppn=8,temp = 76.4
+process = 48,ppn=8,temp = 76.6
+process = 52,ppn=8,temp = 81.8
+process = 56,ppn=8,temp = 77.5
+process = 60,ppn=8,temp = 78.9
+process = 64,ppn=8,temp = 81.9
