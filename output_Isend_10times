@@ -1,0 +1,16 @@
+running Isend ..
+average Isend : 0
+-------------------------------------------
+average allToall : 0
+running Isend ..
+average Isend : 0
+-------------------------------------------
+average allToall : 0
+running Isend ..
+average Isend : 12943
+-------------------------------------------
+average allToall : 12887
+running Isend ..
+average Isend : 12346
+-------------------------------------------
+average allToall : 12496

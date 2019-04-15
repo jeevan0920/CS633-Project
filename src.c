@@ -455,6 +455,7 @@ while ( edges_Next_iter )
 		printf(" Round %d is Completed \n",sample);
 	}
 }
+	/*
 	if(myrank == 0)
 	{
 		for(i=0; i<V; i++)
@@ -462,6 +463,7 @@ while ( edges_Next_iter )
 			printf("%d\t%d\n",i, Vertex_Color[i]);
 		}
 	}
+	*/
 	MPI_Finalize();
 	return 0;
 }
