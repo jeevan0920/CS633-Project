@@ -3,12 +3,14 @@ rm hostfile 1>/dev/null 2>/dev/null
 ifconfig | grep inet | head -1 | awk -F' ' '{print $2}' > hostfile
 n=4
 m=$(ifconfig | grep inet | head -1 | awk -F' ' '{print $2}' | awk -F '.' '{print $4}')
-while [ $n -le 30 ]; do
+
+n=30
+while [ $n -ge 1 ]; do
         node_ip=172.27.19.$n
 
         #do not add  current  ip
         if [ $n -eq $m ];then
-                n=`expr $n + 1`
+                n=`expr $n - 1`
                 continue
         fi
 
@@ -17,7 +19,7 @@ while [ $n -le 30 ]; do
         if [ $? -eq 0 ];then
                 echo $node_ip:4 >> hostfile
         fi
-        n=`expr $n + 1`
+        n=`expr $n - 1`
 done
 
-echo "Hostfiles are created "
+echo "Hostfile created "

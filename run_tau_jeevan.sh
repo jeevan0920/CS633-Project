@@ -22,8 +22,9 @@ export TAU_MAKEFILE=`pwd`/../mar29/Mar29/tau/lib/Makefile.tau-mpi-pdt
 ../mar29/Mar29/tau/bin/tau_cc.sh src.c
 
 #set the path for tau
-export PATH=`pwd`/parmetis/bin:`pwd`/../mar29/Mar29/tau/bin:$PATH
+export PATH=`pwd`../mar29/Mar29/parmetis/bin:`pwd`/../mar29/Mar29/tau/bin:$PATH
 
+echo "PATH : "$PATH
 
 #number of processes
 np=$1
@@ -32,4 +33,4 @@ edges=$3
 verts=$4
 
 
-time mpiexec -n $np -f hostfile ./a.out $datasetPath  $edges $verts
+time mpiexec -n $np  ./a.out $datasetPath  $edges $verts

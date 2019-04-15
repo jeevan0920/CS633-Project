@@ -145,7 +145,7 @@ while ( edges_Next_iter )
 	Broadcast_Leaders(myrank, size, node_vert, last_node_vert, Nodes, Bcast_leaders, Total_Leaders, Base);
 	
 
-	//MPI_Barrier ( MPI_COMM_WORLD );
+	MPI_Barrier ( MPI_COMM_WORLD );
 	//printf("All should reach Barrier here\n");
 
 	/*
@@ -277,6 +277,8 @@ while ( edges_Next_iter )
 	/*
 	 * MPI_Alltoallv will get all the data that belongs to respective nodes. so that it will mark as a contracted vertex.
 	 */
+	//MPI_Alltoallv( AlltoData, Alltocounts, sdispls, MPI_INT, Alltoall_data, Alltoall_count, rdispls, MPI_INT, MPI_COMM_WORLD);
+	
 	MPI_Request Recv_request[i], Send_request[i];
         MPI_Status status;
         for(i=0; i< size; i++)
@@ -293,10 +295,9 @@ while ( edges_Next_iter )
         }
         for(i=0; i<size; i++)
         {
-                MPI_Wait(Recv_request + i, &status);
+                MPI_Wait(Recv_request + i, &status); 
         }
 
-	//MPI_Alltoallv( AlltoData, Alltocounts, sdispls, MPI_INT, Alltoall_data, Alltoall_count, rdispls, MPI_INT, MPI_COMM_WORLD);
 
 	setup_leader_contraction( Alltoall_count, Alltoall_data, Nodes , Base, size);	
 	
