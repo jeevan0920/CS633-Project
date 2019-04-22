@@ -1,6 +1,9 @@
 echo  "-------------------------------------------" 
 echo "running AllToAll [Baseline].." 
+
+make clean
 cp fix_8.c src.c
+make
 
 rm -rf boxplot* 1>&2 2>/dev/null
 rm -rf avgPlot* 1>&2 2>/dev/null
@@ -8,9 +11,9 @@ rm -rf avgPlot* 1>&2 2>/dev/null
 for np in `seq 8 8 64`
 do
 	avg=0
-	for i in `seq 1 5`
+	for i in `seq 1 10`
 	do
-		./run_tau_jeevan.sh $np datasets/wiki-talk_eds_5021410_nds_2394385 5021410 2394385
+		./run_tau_jeevan.sh $np ./datasets/as2000_nds_6474_edges_13233 13233 6474
 		temp=$(pprof | tail -20 | head -1 | tr  -s " " | cut -d " " -f  3 | tr -d "," )
 		echo "size : "$np" , total_time : "$temp >> boxplot_without_opt
 		#avg=$(( avg+temp ))
@@ -20,8 +23,9 @@ do
 done
 
 echo  "-------------------------------------------" 
-cp fix_10_mpi_in_place.c src.c
 
+make clean
+cp fix_10_mpi_in_place.c src.c
 make
 
 echo "running with Optimizatoin .." 
@@ -30,9 +34,9 @@ echo "running with Optimizatoin .."
 for np in `seq 8 8 64`
 do
 	avg=0
-	for i in `seq 1 5`
+	for i in `seq 1 10`
 	do
-		./run_tau_jeevan.sh $np datasets/wiki-talk_eds_5021410_nds_2394385 5021410 2394385
+		./run_tau_jeevan.sh $np  ./datasets/as2000_nds_6474_edges_13233 13233 6474
 		temp=$(pprof | tail -20 | head -1 | tr  -s " " | cut -d " " -f  3 | tr -d "," )
 		echo "size : "$np" , total_time : "$temp >> boxplot_with_opt
 		#avg=$(( avg+temp ))
