@@ -135,35 +135,25 @@ int main( int argc, char *argv[])
 	{
 		Vertex_Color = (int *) malloc(sizeof(int) * V );
 	}
-	int Num_of_leaders;
+	int Num_of_leaders,j;
 	int *Total_Leaders;
 	Total_Leaders = (int *) malloc( sizeof(int) * V );
 	int sample = 0;
-	// Optimize Allocation & Deallocation of buffers
-	int *Alltocounts, *Alltoall_count, *sdispls, *rdispls;
-	Alltocounts = (int *) malloc( sizeof(int) * size );
-	Alltoall_count = (int *) malloc( sizeof(int) * size );
-	sdispls = (int *) malloc( sizeof(int) * size );
-        rdispls = (int *) malloc( sizeof(int) * size );
-	int *recvcnts = (int *) malloc( sizeof(int) * size );
-	int *displs = (int *) malloc ( sizeof(int) * size);
-	int *Total_Clist = (int *) malloc( sizeof(int) * V);
-
 while ( edges_Next_iter )	
 {
 	last_node_size = ne/size + ne % size, node_size = ne/size, last_node_vert = V/size + V % size, node_vert = V/size;
 	Broadcast_Leaders(myrank, size, node_vert, last_node_vert, Nodes, Bcast_leaders, Total_Leaders, Base);
 	
 
-	//MPI_Barrier ( MPI_COMM_WORLD );
-	//printf("All should reach Barrier here\n");
+	MPI_Barrier ( MPI_COMM_WORLD );
 
 	/*
 	 * Alltocounts : This will count the edges to be sent to each node
 	 * AlltoData : This will store the edges to be sent to each node 
 	 * Contracted_edges : This will tells us to how many edges has been contracted
 	 */
-	int  *AlltoData, Contracted_edges;
+	int *Alltocounts, *AlltoData, Contracted_edges;
+	Alltocounts = (int *) malloc( sizeof(int) * size );
 	for( i=0; i<size; i++)
 	{
 		Alltocounts[i] = 0;
@@ -178,57 +168,24 @@ while ( edges_Next_iter )
 	AlltoData = (int *) malloc( sizeof(int) * Contracted_edges * 2 );
 	find_alltoallv_data(size, node_vert, Data, node_size, Alltocounts, Total_Leaders, AlltoData);
 	
-	/* 
-	 * This will print Alltocounts of every node means How many edges has been contracted and whom to sent.
-	 */
-	int j;
-	/*	
-	for( j=0; j< size; j++ ){
-		MPI_Barrier(MPI_COMM_WORLD);
-		if( myrank == j )
-		{
-			if( myrank == 0)
-	                {
-        	                printf("\nNumber of possible edges contracting to every  node\n at process %d :", myrank);
-                	}
-			for( i=0; i<size; i++)
-                        	printf("%d ",Alltocounts[i]);
-		if( myrank < size-1 )
-		printf("\n at process %d :", myrank + 1);	
-		}
-	}
-	*/
+	
 	/*
 	 * Alltoall_count : This will collect number of edges from every node ( Means the vertex belongs to This node
 	 * has been contracted some where else ) 
 	 * MPI_Alltoall : This will collect all the counts they are sending in MPI_Alltoallv
 	 */
+	int *Alltoall_count;
+	Alltoall_count = (int *) malloc( sizeof(int) * size );
 	MPI_Alltoall( Alltocounts, 1 , MPI_INT, Alltoall_count, 1 , MPI_INT, MPI_COMM_WORLD);
 	
-	 /*
-         * This will print Alltoall_count  of every node (Means how many edges each node is sent to this node)
-         */
-	/*	
-        for( j=0; j< size; j++ ){
-                MPI_Barrier(MPI_COMM_WORLD);
-                if( myrank == j )
-                {
-			 if( myrank == 0)
-	                {
-        	                printf("\n Number of possible contracting edges recieved \n at process %d :", myrank);
-                	}
-                        for( i=0; i<size; i++)
-                                printf("%d ",Alltoall_count[i]);
-		if( myrank < size-1 )
-                printf("\n at process %d :", myrank + 1);
-                }
-        }
-	*/	
+	
 	/*
 	 * sdispls : sending offsets to other nodes
 	 * rdispls : Recveing offset form other nodes
 	 */
-	int *Alltoall_data, count = 0;
+	int *sdispls, *rdispls, *Alltoall_data, count = 0;
+	sdispls = (int *) malloc( sizeof(int) * size );
+	rdispls = (int *) malloc( sizeof(int) * size );
 	for( i=0; i<size; i++)
 	{
 		count += Alltoall_count[i];
@@ -237,21 +194,6 @@ while ( edges_Next_iter )
 	find_cummulative_displs( size, Alltocounts, sdispls);
 	find_cummulative_displs( size, Alltoall_count, rdispls);
 
-	/*
-	 * Printing sdispls, rdispls here to check
-	 */
-	/*
-	for( j=0; j< size; j++ ){
-                MPI_Barrier(MPI_COMM_WORLD);
-                if( myrank == j )
-                {
-                        for( i=0; i<size; i++);
-                              //  printf("%d %d  ", sdispls[i], rdispls[i] );
-               // printf("\n");
-                }
-        }
-	*/
-//	MPI_Barrier(MPI_COMM_WORLD);
 
 	/*
 	 * Alltocounts , Alltoall_count should be interms of how many MPI_INTEGERS
@@ -264,140 +206,31 @@ while ( edges_Next_iter )
 	}
 
 	/*
-	 * printing All the contracted edges 
-	 */
-	/*	
-	for( j=0; j< size; j++ ){
-                MPI_Barrier(MPI_COMM_WORLD);
-                if( myrank == j )
-                {
-			 printf(" Contracted edges : %d\t ", Contracted_edges );
-			 for(i=0; i < Contracted_edges * 2; i += 2)
-                         printf("%d %d  ", AlltoData[i], AlltoData[i+1] );
-
-                printf("\n");
-                }
-        }
-	*/
-	/*
 	 * MPI_Alltoallv will get all the data that belongs to respective nodes. so that it will mark as a contracted vertex.
 	 */
-	MPI_Request Recv_request[i], Send_request[i];
-        MPI_Status status;
-        for(i=0; i< size; i++)
-        {
-                MPI_Isend(AlltoData + sdispls[i] , Alltocounts[i], MPI_INT, i, myrank, MPI_COMM_WORLD, Send_request+i);
-        }
-        for(i=0; i<size; i++)
-        {
-                MPI_Irecv(Alltoall_data + rdispls[i] , Alltoall_count[i], MPI_INT, i, i, MPI_COMM_WORLD, Recv_request + i);
-        }
-        for(i=0; i<size;i++)
-        {
-                MPI_Wait(Send_request + i, &status);
-        }
-        for(i=0; i<size; i++)
-        {
-                MPI_Wait(Recv_request + i, &status);
-        }
-
-	//MPI_Alltoallv( AlltoData, Alltocounts, sdispls, MPI_INT, Alltoall_data, Alltoall_count, rdispls, MPI_INT, MPI_COMM_WORLD);
+	MPI_Alltoallv( AlltoData, Alltocounts, sdispls, MPI_INT, Alltoall_data, Alltoall_count, rdispls, MPI_INT, MPI_COMM_WORLD);
 
 	setup_leader_contraction( Alltoall_count, Alltoall_data, Nodes , Base, size);	
 	
-	/*
-	 * After setup_leader_contraction checking what are edges are being contracted.
-	 */
-	/*	
-  	for( j=0; j< size; j++ ){
-                MPI_Barrier(MPI_COMM_WORLD);
-                if( myrank == j )
-                {
-                        int k = 0;
-                        for( i=0; i<size; i++)
-                                k += Alltoall_count[i];
-                 printf("\n Recieved Edges  : %d \t", k/2 );
 
-                         for(i=0; i < k; i += 2)
-                         printf("%d %d  ", Alltoall_data[i], Alltoall_data[i+1] );
-		if( myrank == size -1 )
-			node_vert = last_node_vert;
-                printf("\n Parent Vertex: %d\t", node_vert );
-			for(i=0; i < node_vert; i++)
-			{
-				printf("%d %d  ", Base + i, Nodes[i] );
-			}
-		printf("\n");
-                }
-        }
-	*/
-//	MPI_Barrier(MPI_COMM_WORLD);
+	int *recvcnts = (int *) malloc( sizeof(int) * size );
         last_node_size = ne/size + ne % size, node_size = ne/size, last_node_vert = V/size + V % size, node_vert = V/size;
 	for( i=0; i < size; i++)
                 recvcnts[i] = node_vert ;
                 recvcnts[size-1] = last_node_vert;
+        int *displs = (int *) malloc ( sizeof(int) * size);
         for( i=1,displs[0] = 0; i<size; i++)
                 displs[i] = displs[i-1] + node_vert;
+	int *Total_Clist = (int *) malloc( sizeof(int) * V);
 	if( myrank == size-1 )
 	{
 		node_vert = last_node_vert;
 		node_size = last_node_size;
 	}
-	/*	
-	for( j=0; j< size; j++)
-        {
-                MPI_Barrier( MPI_COMM_WORLD );
-                if( myrank == j)
-                {	
-			printf(" Vertex contracted information \t ");
-                        for( i=0; i< node_vert ; i++ )
-                        {
-                                printf("%d ", Nodes[i] );
-                        }
-                        printf("\n");
-                }
-
-        }
-	*/	
-//	MPI_Barrier(MPI_COMM_WORLD);
-	for(i=0; i< node_vert; i++)
-	{
-		Total_Clist[i+Base] = Nodes[i];
-	}
-	MPI_Allgatherv( MPI_IN_PLACE, node_vert, MPI_INT, Total_Clist, recvcnts, displs, MPI_INT, MPI_COMM_WORLD);
-	/*	
-	for( j=size-1; j>=0; j--)
-	{
-		MPI_Barrier( MPI_COMM_WORLD );
-		if( myrank == j)
-                {
-			if( myrank == size-1)
-	                {
-                	        printf("Gatherv Contracting vertex information :\n");
-        	        }
-			for( i=0; i< V; i++ )
-			{
-				printf("%d-%d: ",i, Total_Clist[i] );
-			}
-			printf("\n");
-		}
-
-	}
-	*/
-	//relink_edges( node_size, Total_Clist, Data );
- 	/*
-	for( j=0; j< size; j++ ){
-                MPI_Barrier(MPI_COMM_WORLD);
-                if(myrank == j)
-                {
-                        for( i=0; i<node_size * ts; i += ts)
-                        {
-                             // printf("%d %d %d \n", Data[i], Data[i+1], Data[i+2] );
-                        }
-                }
-        }
-	*/
-//	MPI_Barrier( MPI_COMM_WORLD);
+	
+	MPI_Allgatherv( Nodes, node_vert, MPI_INT, Total_Clist, recvcnts, displs, MPI_INT, MPI_COMM_WORLD);
+	
+	
 	for(j=0; j< size; j++)
 	{
 		if(myrank == j)
@@ -405,27 +238,7 @@ while ( edges_Next_iter )
 			edges_Left = relink_edges( node_size, Total_Clist, Data );
 		}
 	}
-	/*
-	for( j=0; j< size; j++ ){
-		if(myrank == j)
-		{
-			for( i=0; i<node_size * ts; i += ts)
-			{
-	//			printf("%d %d %d \n", Data[i], Data[i+1], Data[i+2] );
-			}
-		}
-        }
-	*/
-	/*
-	for(j=0; j< size; j++)
-        {
-                MPI_Barrier(MPI_COMM_WORLD);
-                if(myrank == j)
-                {
-                	printf("%d \n", edges_Left);
-		}
-        }
-	*/
+	
 	MPI_Allreduce( &edges_Left, &edges_Next_iter, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
 	
 	 if(edges_Left == 0)
@@ -446,15 +259,22 @@ while ( edges_Next_iter )
         }
 
 
+	free(Alltocounts);
 	free(AlltoData);
+	free(Alltoall_count);
+	free(sdispls);
+	free(rdispls);
 	free(Alltoall_data);
+	free(recvcnts);
+	free(displs);
+	free(Total_Clist);
 	sample ++;
 	if(myrank == 0)
 	{
 		printf(" Round %d is Completed \n",sample);
 	}
 }
-	/*	
+	
 	if(myrank == 0)
 	{
 		for(i=0; i<V; i++)
@@ -462,7 +282,7 @@ while ( edges_Next_iter )
 			printf("%d\t%d\n",i, Vertex_Color[i]);
 		}
 	}
-	*/
+	
 	MPI_Finalize();
 	return 0;
 }
@@ -491,12 +311,7 @@ void Broadcast_Leaders(int myrank, int size, int node_vert, int last_node_vert, 
                 {
                         printf("%d %d\n", Nodes[i], Bcast_leaders[i]);
                 } */
-		
-		for(i=0 ; i < last_node_vert ; i++)
-		{	
-			Total_Leaders[Base + i] = Bcast_leaders[i];
-		}	
-                MPI_Allgatherv( MPI_IN_PLACE, last_node_vert, MPI_INT, Total_Leaders, recvcnts, displs, MPI_INT, MPI_COMM_WORLD);
+                MPI_Allgatherv( Bcast_leaders, last_node_vert, MPI_INT, Total_Leaders, recvcnts, displs, MPI_INT, MPI_COMM_WORLD);
 
 		/*
                 printf( "\n==================================================================\n");
@@ -510,13 +325,8 @@ void Broadcast_Leaders(int myrank, int size, int node_vert, int last_node_vert, 
         }
 
         else{
-		  for(i=0 ; i < last_node_vert ; i++)
-                 {
-                         Total_Leaders[Base + i] = Bcast_leaders[i];
-                 }
-
                 Num_of_leaders = find_leaders( Nodes, Bcast_leaders, node_vert, Base);
-                MPI_Allgatherv( MPI_IN_PLACE, node_vert, MPI_INT, Total_Leaders, recvcnts, displs, MPI_INT, MPI_COMM_WORLD);
+                MPI_Allgatherv( Bcast_leaders, node_vert, MPI_INT, Total_Leaders, recvcnts, displs, MPI_INT, MPI_COMM_WORLD);
 
         }
 	free(recvcnts);
