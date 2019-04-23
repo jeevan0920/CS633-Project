@@ -8,6 +8,7 @@ then
 	exit
 fi
 
+rm a.out
 
 source ~/.bashrc
 

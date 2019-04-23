@@ -1,0 +1,8 @@
+size : 8 , allgatherv : 70.3 , alltoallv : 6.1
+size : 16 , allgatherv : 75.9 , alltoallv : 7.3
+size : 24 , allgatherv : 70.2 , alltoallv : 0.6
+size : 32 , allgatherv : 69.5 , alltoallv : 0.6
+size : 40 , allgatherv : 62.0 , alltoallv : 3.0
+size : 48 , allgatherv : 66.9 , alltoallv : 5.1
+size : 56 , allgatherv : 64.8 , alltoallv : 8.4
+size : 64 , allgatherv : 63.9 , alltoallv : 9.7
