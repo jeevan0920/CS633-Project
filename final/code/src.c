@@ -37,7 +37,7 @@ int main( int argc, char *argv[])
 	char *file_path = argv[1]; //path to input data set
 	int filesize = num_edges*3*sizeof(int); //file size in bytes
 	int num_ints ;//number of integers to be read by process
-
+	FILE *op_file = fopen("output.txt","w");
 
 	V = num_verts;
 	ne = num_edges;
@@ -279,7 +279,7 @@ while ( edges_Next_iter )
 	{
 		for(i=0; i<V; i++)
 		{
-			printf("%d\t%d\n",i, Vertex_Color[i]);
+			fprintf(op_file,"%d\t%d\n",i, Vertex_Color[i]);
 		}
 	}
 	

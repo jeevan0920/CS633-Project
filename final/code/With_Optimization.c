@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <time.h>
+#include <stdio.h>
 
 #define Prob 0.5
 #define ts 3
@@ -37,6 +38,8 @@ int main( int argc, char *argv[])
 	char *file_path = argv[1]; //path to input data set
 	int filesize = num_edges*3*sizeof(int); //file size in bytes
 	int num_ints ;//number of integers to be read by process
+	FILE *op_file = fopen("output.txt","w"); //output file which contains the unque color assigned to each vertex
+
 
 
 	V = num_verts;
@@ -296,7 +299,7 @@ while ( edges_Next_iter )
 	{
 		for(i=0; i<V; i++)
 		{
-			printf("%d\t%d\n",i, Vertex_Color[i]);
+			fprintf(op_file,"%d\t%d\n",i, Vertex_Color[i]);
 		}
 	}
 	
